@@ -1,52 +1,46 @@
 package splitfile
 
 import (
-	"bytes"
-	"fmt"
-	"go/ast"
-	"go/printer"
-	"go/token"
+	"errors"
+	"go/types"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
+
+	"github.com/mccurdyc/splitfile/pkg/objectgraph"
 )
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "splitfile",
-	Doc:      "checks for clean splits of files in packages.",
+	Doc:      "checks for clean splits of files in packages based on objects and their relationships with other objects.",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }
 
-// removeImportDecls filters out the import statements from the declarations slice.
-func removeImportDecls(decls []ast.Decl) []ast.Decl {
-	for i, d := range decls {
-		decl, ok := d.(*ast.GenDecl)
-		if !ok || decl.Tok != token.IMPORT {
-			return decls[i:]
+func run(pass *analysis.Pass) (interface{}, error) {
+	graph := objectgraph.New()
+
+	for _, v := range pass.TypesInfo.Defs {
+		// v is nil for a package definition
+		if v == nil {
+			continue
+		}
+
+		graph.AddNodes(v)
+	}
+
+	for _, node := range graph.Nodes() {
+		err := findRelationships(graph, node)
+		if err != nil {
+			continue
 		}
 	}
 
-	return decls
-}
-
-func run(pass *analysis.Pass) (interface{}, error) {
-	for _, file := range pass.Files {
-		decls := removeImportDecls(file.Decls)
-
-		fmt.Println(decls)
-
-		pass.Reportf(file.Pos(), "split found %q",
-			render(pass.Fset, file))
-	}
 	return nil, nil
 }
 
-// render returns the pretty-print of the given node
-func render(fset *token.FileSet, x interface{}) string {
-	var buf bytes.Buffer
-	if err := printer.Fprint(&buf, fset, x); err != nil {
-		panic(err)
-	}
-	return buf.String()
+// findRelationships given a root declaration, decl, attempts to find relationships
+// with other declarations in the same package.
+func findRelationships(graph *objectgraph.Graph, node types.Object) error {
+	return errors.New("not implemented")
 }
