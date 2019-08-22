@@ -1,0 +1,16 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.12
+    working_directory: /src
+    environment:
+      - GO111MODULE=on
+    steps:
+      - checkout
+
+      - run: go mod download
+      - run: go fmt ./...
+      - run: go build cmd/splitfile/splitfile.go
+      - run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - run: bash <(curl -s https://codecov.io/bash)
