@@ -2,6 +2,7 @@ package nodegraph
 
 import (
 	"go/token"
+	"reflect"
 	"sync"
 )
 
@@ -30,14 +31,15 @@ func (g *Graph) AddNodes(nodes ...Node) {
 	g.addNodes(nodes...)
 }
 
-// addNodes adds nodes, or declarations, to the Graph.
-//
-// TODO (@mccurdyc): this could add duplicate nodes.
+// addNodes adds nodes to the Graph with a default relationship slice.
 func (g *Graph) addNodes(nodes ...Node) {
 	for _, node := range nodes {
+		// TODO: should this be on the consumer to check or should we abstract this from them?
+		// My only thought is that if we don't protect them, they could overwrite a node
+		// that already has edges associated.
 		if !g.containsNode(node) {
 			g.lock.Lock()
-			g.relations[node] = make([]Node, 0, 1) // uhh, is 1 okay seems like a lot of dynamic resizing will happen?
+			g.relations[node] = make([]Node, 0, 0)
 			g.lock.Unlock()
 		}
 	}
@@ -81,14 +83,26 @@ func (g *Graph) AddEdges(source Node, related ...Node) {
 
 // addEdges adds a single edge to the source node.
 func (g *Graph) addEdges(source Node, related ...Node) {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-
-	if g.relations[source] == nil {
-		g.relations[source] = make([]Node, 0, len(related))
+	if source == nil {
+		return
 	}
 
-	g.relations[source] = append(g.relations[source], related...)
+	if !g.containsNode(source) {
+		g.addNodes(source)
+	}
+
+	for _, rel := range related {
+		// a node can't be related to itself
+		if reflect.DeepEqual(rel, source) {
+			continue
+		}
+
+		g.addNodes(rel)
+
+		g.lock.Lock()
+		g.relations[source] = append(g.relations[source], rel)
+		g.lock.Unlock()
+	}
 }
 
 // EdgesOf returns the nodes of connected edges to a given source node.
