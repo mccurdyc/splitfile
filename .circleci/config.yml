@@ -1,16 +1,30 @@
-version: 2
+version: 2.1
+
 jobs:
-  build:
+  test-and-upload:
     docker:
       - image: circleci/golang:1.12
     working_directory: /src
     environment:
-      - GO111MODULE=on
+      - GO111MODULE: on
+      - CC_TEST_REPORTER_ID: YOUR_REPO_CC_TEST_REPORTER_ID
     steps:
       - checkout
-
-      - run: go mod download
-      - run: go fmt ./...
-      - run: go build cmd/splitfile/splitfile.go
-      - run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - run:
+          name: Install Climate test-reporter
+          command: |
+            curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+            chmod +x ./cc-test-reporter
+      - run:
+          name: Collect Test Coverage
+          command: |
+            go mod download
+            go test -coverprofile c.out ./...
+            # have to format coverage to work with Go >1.11 and Modules - https://github.com/codeclimate/test-reporter/issues/363
+            ./cc-test-reporter after-build --prefix github.com/mccurdyc/splitfile --coverage-input-type gocov --exit-code $?
       - run: bash <(curl -s https://codecov.io/bash)
+
+workflows:
+  test:
+    jobs:
+      - test-and-upload

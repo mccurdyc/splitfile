@@ -1,5 +1,7 @@
 # splitfile
 
+[![CircleCI](https://circleci.com/gh/mccurdyc/splitfile.svg?style=svg)](https://circleci.com/gh/mccurdyc/splitfile) [![codecov](https://codecov.io/gh/mccurdyc/splitfile/branch/master/graph/badge.svg)](https://codecov.io/gh/mccurdyc/splitfile) [![Maintainability](https://api.codeclimate.com/v1/badges/8b473a645aab19597124/maintainability)](https://codeclimate.com/github/mccurdyc/splitfile/maintainability)
+
 splitfile attempts to make Go code more readable by identifying clear splits in
 your package files.
 
