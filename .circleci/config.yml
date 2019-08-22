@@ -6,7 +6,7 @@ jobs:
       - image: circleci/golang:1.12
     working_directory: /go/src/github.com/mccurdyc/splitfile
     environment:
-      - GO111MODULE: on
+      - GO111MODULE=on
       - CC_TEST_REPORTER_ID: YOUR_REPO_CC_TEST_REPORTER_ID
     steps:
       - checkout
