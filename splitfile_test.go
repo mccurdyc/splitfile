@@ -152,10 +152,10 @@ func (b b) mb() {
 			files: map[string]string{"a/a.go": `package a
 type a int
 
-func ma(a a) {
+func fa(a a) {
 }
 
-func maa() {
+func faa() {
   _ = a(123)
 }
 `,

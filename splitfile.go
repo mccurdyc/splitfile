@@ -2,6 +2,7 @@ package splitfile
 
 import (
 	"errors"
+	"fmt"
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
@@ -49,5 +50,43 @@ func run(pass *analysis.Pass) (interface{}, error) {
 // findRelationships given a root declaration, decl, attempts to find relationships
 // with other declarations in the same package.
 func findRelationships(graph *nodegraph.Graph, node types.Object) ([]types.Object, error) {
-	return nil, errors.New("not implemented")
+	// always check methods of type
+	methods := types.NewMethodSet(node.Type())
+	_, _ = checkMethodsForRelated(graph, methods)
+
+	return nil, nil
+}
+
+func checkMethodsForRelated(graph *nodegraph.Graph, mset *types.MethodSet) ([]types.Object, error) {
+	for i := 0; i < mset.Len(); i++ {
+		method := mset.At(i)
+		_, err := checkMethod(graph, method)
+		if err != nil {
+			continue
+		}
+
+	}
+
+	return nil, nil
+}
+
+var errUnprocessableMethodKind = errors.New("cannot process method selection of kind")
+
+func checkMethod(graph *nodegraph.Graph, method *types.Selection) ([]types.Object, error) {
+	if method.Kind() != types.MethodVal {
+		return nil, errUnprocessableMethodKind
+	}
+
+	obj := method.Obj()
+	typ := obj.Type()
+
+	fmt.Println(typ)
+	fmt.Println(obj)
+
+	// TODO: need to look through params
+	// params := typ.Params()
+
+	// TODO: need to look through children scopes for body
+
+	return nil, nil
 }
