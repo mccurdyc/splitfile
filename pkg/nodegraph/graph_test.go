@@ -28,23 +28,26 @@ func TestNew(t *testing.T) {
 
 func TestAddNodes(t *testing.T) {
 	tests := []struct {
-		name  string
-		graph *Graph
-		nodes []string
+		name     string
+		graph    *Graph
+		nodes    []string
+		expected map[string][]string
 	}{
 		{
 			name: "add nil node",
 			graph: &Graph{
 				relations: make(map[string][]string),
 			},
-			nodes: []string{""},
+			nodes:    []string{""},
+			expected: make(map[string][]string),
 		},
 		{
 			name: "add single node",
 			graph: &Graph{
 				relations: make(map[string][]string),
 			},
-			nodes: []string{"a"},
+			nodes:    []string{"a"},
+			expected: map[string][]string{"a": make([]string, 0)},
 		},
 		{
 			name: "add multiple nodes",
@@ -52,6 +55,11 @@ func TestAddNodes(t *testing.T) {
 				relations: make(map[string][]string),
 			},
 			nodes: []string{"a", "b", "c"},
+			expected: map[string][]string{
+				"a": make([]string, 0),
+				"b": make([]string, 0),
+				"c": make([]string, 0),
+			},
 		},
 		{
 			name: "add duplicate nodes",
@@ -59,20 +67,17 @@ func TestAddNodes(t *testing.T) {
 				relations: map[string][]string{"a": make([]string, 0)},
 			},
 			nodes: []string{"a", "a", "a"},
+			expected: map[string][]string{
+				"a": make([]string, 0),
+			},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			expected := make(map[string][]string)
-
-			for _, n := range test.nodes {
-				expected[n] = make([]string, 0)
-			}
-
 			test.graph.AddNodes(test.nodes...)
 
-			assert.Equal(t, expected, test.graph.relations, "the expected map does not match the graphs relation map.")
+			assert.Equal(t, test.expected, test.graph.relations, "the expected map does not match the graphs relation map.")
 		})
 	}
 }

@@ -31,7 +31,7 @@ func (g *Graph) addNodes(nodes ...string) {
 		// TODO: should this be on the consumer to check or should we abstract this from them?
 		// My only thought is that if we don't protect them, they could overwrite a node
 		// that already has edges associated.
-		if !g.containsNode(node) {
+		if !g.containsNode(node) && node != "" {
 			g.lock.Lock()
 			g.relations[node] = make([]string, 0, 0)
 			g.lock.Unlock()
@@ -87,7 +87,7 @@ func (g *Graph) addEdges(source string, related ...string) {
 
 	for _, rel := range related {
 		// a node can't be related to itself
-		if source == rel {
+		if source == rel || rel == "" {
 			continue
 		}
 
@@ -99,6 +99,7 @@ func (g *Graph) addEdges(source string, related ...string) {
 
 		g.lock.Lock()
 		g.relations[source] = append(g.relations[source], rel)
+		g.relations[rel] = append(g.relations[rel], source)
 		g.lock.Unlock()
 	}
 }
