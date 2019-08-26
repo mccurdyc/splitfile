@@ -1,8 +1,6 @@
 package splitfile
 
 import (
-	"errors"
-	"fmt"
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
@@ -27,66 +25,102 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			continue
 		}
 
-		graph.AddNodes(node)
+		nodeKey := node.Type().String()
 
-		// This could be done recursively
-		// Right now, the thought was to only add a single level of related nodes.
-		related, err := findRelationships(graph, node.(types.Object))
+		if !graph.ContainsNode(nodeKey) {
+			graph.AddNodes(nodeKey)
+		}
+
+		related, err := findRelated(graph, node.(types.Object))
 		if err != nil {
 			continue
 		}
 
-		for _, relNode := range related {
-			graph.AddNodes(relNode)
-			graph.AddEdges(node, relNode)
+		for _, rel := range related {
+			if rel == "" || rel == nodeKey {
+				continue
+			}
+
+			if !graph.ContainsNode(rel) {
+				graph.AddNodes(rel)
+			}
+
+			graph.AddEdges(nodeKey, rel)
 		}
 	}
 
 	// findSplits()
 
-	return nil, nil
+	return nil, nil // TODO: FIX THIS!
 }
 
-// findRelationships given a root declaration, decl, attempts to find relationships
+// findRelated given a root node attempts to find relationships
 // with other declarations in the same package.
-func findRelationships(graph *nodegraph.Graph, node types.Object) ([]types.Object, error) {
-	// always check methods of type
-	methods := types.NewMethodSet(node.Type())
-	_, _ = checkMethodsForRelated(graph, methods)
+func findRelated(graph *nodegraph.Graph, node types.Object) ([]string, error) {
+	rel := make([]string, 0)
 
-	return nil, nil
+	related := checkMethods(graph, types.NewMethodSet(node.Type()))
+	rel = append(rel, related...)
+
+	// TODO: check other places for related (e.g., funcs, interfaces, etc.)
+
+	return rel, nil
 }
 
-func checkMethodsForRelated(graph *nodegraph.Graph, mset *types.MethodSet) ([]types.Object, error) {
+// checkMethods checks methods' signatures for related types.
+func checkMethods(graph *nodegraph.Graph, mset *types.MethodSet) []string {
+	rel := make([]string, 0)
+
 	for i := 0; i < mset.Len(); i++ {
 		method := mset.At(i)
-		_, err := checkMethod(graph, method)
-		if err != nil {
+		rel = append(rel, method.String()) // methods themselves are always related
+
+		sig, ok := method.Type().(*types.Signature)
+		if !ok {
 			continue
 		}
 
+		related := checkSignature(graph, sig)
+		rel = append(rel, related...)
 	}
 
-	return nil, nil
+	return rel
 }
 
-var errUnprocessableMethodKind = errors.New("cannot process method selection of kind")
+// checkSignature checks a function signature, the receiver (if it is a method this
+// will be a non-nil value), the parameters and the return types.
+func checkSignature(graph *nodegraph.Graph, sig *types.Signature) []string {
+	rel := make([]string, 0)
 
-func checkMethod(graph *nodegraph.Graph, method *types.Selection) ([]types.Object, error) {
-	if method.Kind() != types.MethodVal {
-		return nil, errUnprocessableMethodKind
+	rel = append(rel, checkVar(graph, sig.Recv()))
+	rel = append(rel, checkTuple(graph, sig.Params())...)
+	rel = append(rel, checkTuple(graph, sig.Results())...)
+
+	return rel
+}
+
+// checkVar checks a variable to see if it is contained in the graph.
+func checkVar(graph *nodegraph.Graph, v *types.Var) string {
+	if v == nil {
+		return ""
 	}
 
-	obj := method.Obj()
-	typ := obj.Type()
+	return v.Type().String()
+}
 
-	fmt.Println(typ)
-	fmt.Println(obj)
+// checkTuple checks a tuple of variables to see if they are contained in the graph.
+func checkTuple(graph *nodegraph.Graph, vars *types.Tuple) []string {
+	rel := make([]string, 0)
 
-	// TODO: need to look through params
-	// params := typ.Params()
+	for i := 0; i < vars.Len(); i++ {
+		v := checkVar(graph, vars.At(i))
 
-	// TODO: need to look through children scopes for body
+		if v == "" {
+			continue
+		}
 
-	return nil, nil
+		rel = append(rel, v)
+	}
+
+	return rel
 }

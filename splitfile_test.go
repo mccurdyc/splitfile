@@ -36,129 +36,143 @@ func TestFromStringLiterals(t *testing.T) {
 			name:    "single type",
 			pkgpath: "a",
 			files: map[string]string{"a/a.go": `package a
-type a int
-`,
+		type a int
+		`,
 			},
 		},
 		{
 			name:    "small file un-related types",
 			pkgpath: "ab",
 			files: map[string]string{"ab/ab.go": `package ab
-type a int
-type b int
-`,
+		type a int
+		type b int
+		`,
 			},
 		},
 		{
 			name:    "related types through struct fields",
 			pkgpath: "ab",
 			files: map[string]string{"ab/ab.go": `package ab
-type a int
+		type a int
 
-type b struct {
-  a a
-}
-`,
+		type b struct {
+		  a a
+		}
+		`,
 			},
 		},
 		{
 			name:    "related type and function param",
 			pkgpath: "a",
 			files: map[string]string{"a/a.go": `package a
-type a int
+		type a int
 
-func fa(a a) {
-}
-`,
+		func fa(a a) {
+		}
+		`,
 			},
 		},
 		{
 			name:    "related type and function usage",
 			pkgpath: "a",
 			files: map[string]string{"a/a.go": `package a
-type a int
+		type a int
 
-func fa() {
-  _ = a(123)
-}
-`,
+		func fa() {
+		  _ = a(123)
+		}
+		`,
 			},
 		},
 		{
 			name:    "related type and multiple functions",
 			pkgpath: "a",
 			files: map[string]string{"a/a.go": `package a
-type a int
+		type a int
 
-func fa(a a) {
-}
+		func fa(a a) {
+		}
 
-func faa() {
-  _ = a(123)
-}
-`,
+		func faa() {
+		  _ = a(123)
+		}
+		`,
 			},
 		},
 		{
 			name:    "related type and method receiver (non-pointer)",
 			pkgpath: "a",
 			files: map[string]string{"a/a.go": `package a
-type a int
+		type a int
 
-func (a a) ma() {
-}
-`,
+		func (a a) ma() {
+		}
+		`,
 			},
 		},
 		{
 			name:    "related type and method receiver (pointer)",
 			pkgpath: "a",
 			files: map[string]string{"a/a.go": `package a
-type a int
+		type a int
 
-func (a *a) ma() {
-}
-`,
+		func (a *a) ma() {
+		}
+		`,
 			},
 		},
 		{
 			name:    "related type and method param",
 			pkgpath: "ab",
 			files: map[string]string{"ab/ab.go": `package ab
-type a int
-type b int
+		type a int
+		type b int
 
-func (b b) mb(a a) {
-}
-`,
+		func (b b) mb(a a) {
+		}
+		`,
+			},
+		},
+		{
+			name:    "related type method param and return values",
+			pkgpath: "abc",
+			files: map[string]string{"abc/abc.go": `package abc
+		type a int
+		type b int
+		type c int
+
+		func (b b) mb(a a) c {
+			return c(1)
+		}
+		`,
 			},
 		},
 		{
 			name:    "related type and method usage",
 			pkgpath: "ab",
 			files: map[string]string{"ab/ab.go": `package ab
-type a int
-type b int
+		type a int
+		type b int
 
-func (b b) mb() {
-  _ = a(123)
-}
-`,
+		func (b b) mb() {
+		  _ = a(123)
+		}
+		`,
 			},
 		},
 		{
 			name:    "related type and multiple methods",
 			pkgpath: "a",
 			files: map[string]string{"a/a.go": `package a
-type a int
+		type a int
 
-func fa(a a) {
-}
+		func fa(a a) {
+		}
 
-func faa() {
-  _ = a(123)
-}
-`,
+		func faa() {
+		  _ = a(123)
+		}
+		`,
 			},
 		},
 	} {
