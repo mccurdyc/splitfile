@@ -1,7 +1,6 @@
 package nodegraph
 
 import (
-	"go/token"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,11 +9,11 @@ import (
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name              string
-		expectedRelations map[Node][]Node
+		expectedRelations map[string][]string
 	}{
 		{
 			name:              "empty relations map",
-			expectedRelations: map[Node][]Node{},
+			expectedRelations: map[string][]string{},
 		},
 	}
 
@@ -27,49 +26,48 @@ func TestNew(t *testing.T) {
 	}
 }
 
-type mockNode struct {
-	pos int
-}
-
-func (m mockNode) Pos() token.Pos {
-	return token.Pos(m.pos)
-}
-
 func TestAddNodes(t *testing.T) {
 	tests := []struct {
 		name  string
 		graph *Graph
-		nodes []Node
+		nodes []string
 	}{
 		{
 			name: "add nil node",
 			graph: &Graph{
-				relations: make(map[Node][]Node),
+				relations: make(map[string][]string),
 			},
-			nodes: []Node{nil},
+			nodes: []string{""},
 		},
 		{
 			name: "add single node",
 			graph: &Graph{
-				relations: make(map[Node][]Node),
+				relations: make(map[string][]string),
 			},
-			nodes: []Node{mockNode{pos: 1}},
+			nodes: []string{"a"},
 		},
 		{
 			name: "add multiple nodes",
 			graph: &Graph{
-				relations: make(map[Node][]Node),
+				relations: make(map[string][]string),
 			},
-			nodes: []Node{mockNode{pos: 1}, mockNode{pos: 2}, mockNode{pos: 3}},
+			nodes: []string{"a", "b", "c"},
+		},
+		{
+			name: "add duplicate nodes",
+			graph: &Graph{
+				relations: map[string][]string{"a": make([]string, 0)},
+			},
+			nodes: []string{"a", "a", "a"},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			expected := make(map[Node][]Node)
+			expected := make(map[string][]string)
 
 			for _, n := range test.nodes {
-				expected[n] = make([]Node, 0, 0)
+				expected[n] = make([]string, 0)
 			}
 
 			test.graph.AddNodes(test.nodes...)
@@ -83,81 +81,81 @@ func TestAddEdges(t *testing.T) {
 	tests := []struct {
 		name     string
 		graph    *Graph
-		source   Node
-		related  []Node
+		source   string
+		related  []string
 		expected *Graph
 	}{
 		{
 			name: "nil source",
 			graph: &Graph{
-				relations: make(map[Node][]Node),
+				relations: make(map[string][]string),
 			},
-			source:  nil,
-			related: []Node{mockNode{pos: 1}},
+			source:  "",
+			related: []string{"a"},
 			expected: &Graph{
-				relations: make(map[Node][]Node),
+				relations: make(map[string][]string),
 			},
 		},
 		{
 			name: "nil related non-existent source",
 			graph: &Graph{
-				relations: make(map[Node][]Node),
+				relations: make(map[string][]string),
 			},
-			source:  mockNode{pos: 1},
-			related: nil,
+			source:  "a",
+			related: []string{""},
 			expected: &Graph{
-				relations: map[Node][]Node{mockNode{pos: 1}: make([]Node, 0)},
+				relations: map[string][]string{"a": make([]string, 0)},
 			},
 		},
 		{
 			name: "nil related source exists",
 			graph: &Graph{
-				relations: map[Node][]Node{mockNode{pos: 1}: make([]Node, 0)},
+				relations: map[string][]string{"a": make([]string, 0)},
 			},
-			source:  mockNode{pos: 1},
-			related: nil,
+			source:  "a",
+			related: []string{""},
 			expected: &Graph{
-				relations: map[Node][]Node{mockNode{pos: 1}: make([]Node, 0)},
+				relations: map[string][]string{"a": make([]string, 0)},
 			},
 		},
 		{
 			name: "adding single edge to existing node",
 			graph: &Graph{
-				relations: map[Node][]Node{mockNode{pos: 1}: make([]Node, 0)},
+				relations: map[string][]string{"a": make([]string, 0)},
 			},
-			source:  mockNode{pos: 1},
-			related: []Node{mockNode{pos: 2}},
+			source:  "a",
+			related: []string{"b"},
 			expected: &Graph{
-				relations: map[Node][]Node{
-					mockNode{pos: 1}: []Node{mockNode{pos: 2}},
-					mockNode{pos: 2}: make([]Node, 0),
+				relations: map[string][]string{
+					"a": []string{"b"},
+					"b": []string{"a"},
 				},
 			},
 		},
 		{
-			name: "adding single edge to non-existent node",
+			name: "adding single edge to non-existent node with non-empty graph",
 			graph: &Graph{
-				relations: map[Node][]Node{mockNode{pos: 1}: make([]Node, 0)},
+				relations: map[string][]string{"a": make([]string, 0)},
 			},
-			source:  mockNode{pos: 2},
-			related: []Node{mockNode{pos: 3}},
+			source:  "b",
+			related: []string{"c"},
 			expected: &Graph{
-				relations: map[Node][]Node{
-					mockNode{pos: 1}: make([]Node, 0),
-					mockNode{pos: 2}: []Node{mockNode{pos: 3}},
-					mockNode{pos: 3}: make([]Node, 0),
+				relations: map[string][]string{
+					"a": []string{},
+					"b": []string{"c"},
+					"c": []string{"b"},
 				},
 			},
 		},
 		{
 			name: "source and related are the same node",
 			graph: &Graph{
-				relations: map[Node][]Node{mockNode{pos: 1}: make([]Node, 0)},
+				relations: map[string][]string{"a": make([]string, 0)},
 			},
-			source:  mockNode{pos: 1},
-			related: []Node{mockNode{pos: 1}},
+			source:  "a",
+			related: []string{"a"},
 			expected: &Graph{
-				relations: map[Node][]Node{mockNode{pos: 1}: make([]Node, 0)},
+				relations: map[string][]string{"a": []string{}},
 			},
 		},
 	}
