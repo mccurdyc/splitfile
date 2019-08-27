@@ -26,6 +26,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 
 		nodeKey := node.Type().String()
+		graph.AddNodes(nodeKey)
 
 		if !graph.ContainsNode(nodeKey) {
 			graph.AddNodes(nodeKey)
