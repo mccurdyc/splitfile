@@ -26,7 +26,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			continue
 		}
 
-		graph.AddNodes(node)
+		nodeKey := node.Type().String()
+		graph.AddNodes(nodeKey)
 
 		// This could be done recursively
 		// Right now, the thought was to only add a single level of related nodes.
@@ -37,7 +38,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 		for _, relNode := range related {
 			graph.AddNodes(relNode)
-			graph.AddEdges(node, relNode)
+			graph.AddEdges(nodeKey, relNode)
 		}
 	}
 
@@ -48,6 +49,6 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 // findRelationships given a root declaration, decl, attempts to find relationships
 // with other declarations in the same package.
-func findRelationships(graph *nodegraph.Graph, node types.Object) ([]types.Object, error) {
+func findRelationships(graph *nodegraph.Graph, node types.Object) ([]string, error) {
 	return nil, errors.New("not implemented")
 }
