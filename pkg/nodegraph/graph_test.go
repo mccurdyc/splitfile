@@ -174,3 +174,208 @@ func TestAddEdges(t *testing.T) {
 		})
 	}
 }
+
+func TestNodes(t *testing.T) {
+	tests := []struct {
+		name     string
+		graph    *Graph
+		expected []string
+	}{
+		{
+			name:     "new empty graph",
+			graph:    &Graph{},
+			expected: []string{},
+		},
+		{
+			name:     "empty relations map",
+			graph:    &Graph{relations: make(map[string][]string)},
+			expected: []string{},
+		},
+		{
+			name:     "one result",
+			graph:    &Graph{relations: map[string][]string{"a": []string{}}},
+			expected: []string{"a"},
+		},
+		{
+			name:     "multiple results",
+			graph:    &Graph{relations: map[string][]string{"a": []string{}, "b": []string{}}},
+			expected: []string{"a", "b"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actual := test.graph.Nodes()
+			assert.ElementsMatch(t, test.expected, actual, "expected and actual graph return different nodes.")
+		})
+	}
+}
+
+func TestContainsNode(t *testing.T) {
+	tests := []struct {
+		name     string
+		graph    *Graph
+		node     string
+		expected bool
+	}{
+		{
+			name:     "empty map nil node",
+			graph:    &Graph{relations: make(map[string][]string)},
+			node:     "",
+			expected: false,
+		},
+		{
+			name:     "empty map non-nil node",
+			graph:    &Graph{relations: make(map[string][]string)},
+			node:     "a",
+			expected: false,
+		},
+		{
+			name:     "missing node",
+			graph:    &Graph{relations: map[string][]string{"b": []string{}, "c": []string{}}},
+			node:     "a",
+			expected: false,
+		},
+		{
+			name:     "contained node",
+			graph:    &Graph{relations: map[string][]string{"b": []string{}, "a": []string{}, "c": []string{}}},
+			node:     "a",
+			expected: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actual := test.graph.ContainsNode(test.node)
+			assert.Equal(t, test.expected, actual, "expected and actual contains don't agree.")
+		})
+	}
+}
+
+func TestEdgesOf(t *testing.T) {
+	tests := []struct {
+		name     string
+		graph    *Graph
+		node     string
+		expected []string
+	}{
+		{
+			name:     "empty map nil node",
+			graph:    &Graph{relations: make(map[string][]string)},
+			node:     "",
+			expected: []string{},
+		},
+		{
+			name:     "empty map non-nil node",
+			graph:    &Graph{relations: make(map[string][]string)},
+			node:     "a",
+			expected: []string{},
+		},
+		{
+			name:     "contained node empty edges",
+			graph:    &Graph{relations: map[string][]string{"a": []string{}}},
+			node:     "a",
+			expected: []string{},
+		},
+		{
+			name:     "contained node single edge",
+			graph:    &Graph{relations: map[string][]string{"a": []string{"b"}}},
+			node:     "a",
+			expected: []string{"b"},
+		},
+		{
+			name:     "contained node multiple edges",
+			graph:    &Graph{relations: map[string][]string{"a": []string{"b", "c"}}},
+			node:     "a",
+			expected: []string{"b", "c"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actual := test.graph.edgesOf(test.node)
+			assert.ElementsMatch(t, test.expected, actual, "edges of expected and actual don't match.")
+		})
+	}
+}
+
+func TestContainsEdge(t *testing.T) {
+	tests := []struct {
+		name     string
+		graph    *Graph
+		source   string
+		related  string
+		expected bool
+	}{
+		{
+			name:     "empty map nil source and related",
+			graph:    &Graph{relations: make(map[string][]string)},
+			source:   "",
+			related:  "",
+			expected: false,
+		},
+		{
+			name:     "empty map nil source",
+			graph:    &Graph{relations: make(map[string][]string)},
+			source:   "",
+			related:  "a",
+			expected: false,
+		},
+		{
+			name:     "empty map nil related",
+			graph:    &Graph{relations: make(map[string][]string)},
+			source:   "a",
+			related:  "",
+			expected: false,
+		},
+		{
+			name:     "empty map",
+			graph:    &Graph{relations: make(map[string][]string)},
+			source:   "a",
+			related:  "b",
+			expected: false,
+		},
+		{
+			name:     "non-empty map nil source and related",
+			graph:    &Graph{relations: map[string][]string{"a": []string{}}},
+			source:   "",
+			related:  "",
+			expected: false,
+		},
+		{
+			name:     "non-empty map nil source",
+			graph:    &Graph{relations: map[string][]string{"a": []string{}}},
+			source:   "",
+			related:  "a",
+			expected: false,
+		},
+		{
+			name:     "non-empty map nil related",
+			graph:    &Graph{relations: map[string][]string{"a": []string{}}},
+			source:   "a",
+			related:  "",
+			expected: false,
+		},
+		{
+			name:     "source and related are the same",
+			graph:    &Graph{relations: map[string][]string{"a": []string{"b"}, "b": []string{"a"}}},
+			source:   "a",
+			related:  "a",
+			expected: false,
+		},
+		{
+			name:     "contains edge",
+			graph:    &Graph{relations: map[string][]string{"a": []string{"b"}, "b": []string{"a"}}},
+			source:   "a",
+			related:  "b",
+			expected: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actual := test.graph.ContainsEdge(test.source, test.related)
+			assert.Equal(t, test.expected, actual, "contains edge results in actual does not match expected.")
+		})
+	}
+}
