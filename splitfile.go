@@ -32,7 +32,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			graph.AddNodes(nodeKey)
 		}
 
-		related, err := findRelated(graph, node.(types.Object))
+		related, err := findRelated(node.(types.Object))
 		if err != nil {
 			continue
 		}
@@ -57,10 +57,10 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 // findRelated given a root node attempts to find relationships
 // with other declarations in the same package.
-func findRelated(graph *nodegraph.Graph, node types.Object) ([]string, error) {
+func findRelated(node types.Object) ([]string, error) {
 	rel := make([]string, 0)
 
-	related := checkMethods(graph, types.NewMethodSet(node.Type()))
+	related := checkMethods(types.NewMethodSet(node.Type()))
 	rel = append(rel, related...)
 
 	// TODO: check other places for related (e.g., funcs, interfaces, etc.)
@@ -69,7 +69,7 @@ func findRelated(graph *nodegraph.Graph, node types.Object) ([]string, error) {
 }
 
 // checkMethods checks methods' signatures for related types.
-func checkMethods(graph *nodegraph.Graph, mset *types.MethodSet) []string {
+func checkMethods(mset *types.MethodSet) []string {
 	rel := make([]string, 0)
 
 	for i := 0; i < mset.Len(); i++ {
@@ -81,7 +81,7 @@ func checkMethods(graph *nodegraph.Graph, mset *types.MethodSet) []string {
 			continue
 		}
 
-		related := checkSignature(graph, sig)
+		related := checkSignature(sig)
 		rel = append(rel, related...)
 	}
 
@@ -90,31 +90,42 @@ func checkMethods(graph *nodegraph.Graph, mset *types.MethodSet) []string {
 
 // checkSignature checks a function signature, the receiver (if it is a method this
 // will be a non-nil value), the parameters and the return types.
-func checkSignature(graph *nodegraph.Graph, sig *types.Signature) []string {
+func checkSignature(sig *types.Signature) []string {
 	rel := make([]string, 0)
 
-	rel = append(rel, checkVar(graph, sig.Recv()))
-	rel = append(rel, checkTuple(graph, sig.Params())...)
-	rel = append(rel, checkTuple(graph, sig.Results())...)
+	if v := checkVar(sig.Recv()); v != "" {
+		rel = append(rel, v)
+	}
+	rel = append(rel, checkTuple(sig.Params())...)
+	rel = append(rel, checkTuple(sig.Results())...)
 
 	return rel
 }
 
-// checkVar checks a variable to see if it is contained in the graph.
-func checkVar(graph *nodegraph.Graph, v *types.Var) string {
-	if v == nil {
+// checkVar validates a variable and if it is valid, it is returned as a valid related.
+func checkVar(v *types.Var) string {
+	if v == nil || v.Type() == types.Type(nil) {
 		return ""
 	}
 
-	return v.Type().String()
+	var res string
+
+	switch t := v.Type().(type) {
+	case *types.Slice:
+		res = t.Elem().String()
+	default:
+		res = t.String()
+	}
+
+	return res
 }
 
-// checkTuple checks a tuple of variables to see if they are contained in the graph.
-func checkTuple(graph *nodegraph.Graph, vars *types.Tuple) []string {
+// checkTuple checks a tuple of variables for related nodes.
+func checkTuple(vars *types.Tuple) []string {
 	rel := make([]string, 0)
 
 	for i := 0; i < vars.Len(); i++ {
-		v := checkVar(graph, vars.At(i))
+		v := checkVar(vars.At(i))
 
 		if v == "" {
 			continue
