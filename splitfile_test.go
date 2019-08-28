@@ -1,188 +1,213 @@
-package splitfile_test
+package splitfile
 
 import (
+	"go/token"
+	"go/types"
 	"testing"
 
-	"github.com/mccurdyc/splitfile"
-
-	"golang.org/x/tools/go/analysis/analysistest"
+	"github.com/stretchr/testify/assert"
 )
 
-// TestFromFileSystem demonstrates how to test an analysis using input
-// files stored in the file system.
-//
-// These tests have the advantages that test data can be edited
-// directly, and that files named in error messages can be opened.
-// However, they tend to spread a small number of lines of text across a
-// rather deep directory hierarchy, and obscure similarities among
-// related tests, especially when tests involve multiple packages, or
-// multiple variants of a single scenario.
-// func TestFromFileSystem(t *testing.T) {
-// 	testdata := analysistest.TestData()
-// 	analysistest.Run(t, testdata, splitfile.Analyzer, "abc")
-// }
+type mockType struct {
+	s string
+}
 
-// TestFromStringLiterals demonstrates how to test an analysis using
-// a table of string literals for each test case.
-//
-// Such tests are typically quite compact.
-func TestFromStringLiterals(t *testing.T) {
-	for _, test := range [...]struct {
-		name    string
-		pkgpath string
-		files   map[string]string
+func (mt *mockType) Underlying() types.Type {
+	return mt
+}
+
+func (mt *mockType) String() string {
+	return mt.s
+}
+
+func TestCheckMethods(t *testing.T) {
+}
+
+func TestCheckSignature(t *testing.T) {
+	tests := []struct {
+		name     string
+		recv     *types.Var
+		params   []*types.Var
+		results  []*types.Var
+		variadic bool
+		expected []string
 	}{
 		{
-			name:    "single type",
-			pkgpath: "a",
-			files: map[string]string{"a/a.go": `package a
-		type a int
-		`,
-			},
+			name:     "nil receiver nil params nil results",
+			recv:     nil,
+			params:   nil,
+			results:  nil,
+			variadic: false,
+			expected: []string{},
 		},
 		{
-			name:    "small file un-related types",
-			pkgpath: "ab",
-			files: map[string]string{"ab/ab.go": `package ab
-		type a int
-		type b int
-		`,
+			name:   "nil receiver nil params single result",
+			recv:   nil,
+			params: nil,
+			results: []*types.Var{
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "a"}),
 			},
+			variadic: false,
+			expected: []string{"a"},
 		},
 		{
-			name:    "related types through struct fields",
-			pkgpath: "ab",
-			files: map[string]string{"ab/ab.go": `package ab
-		type a int
-
-		type b struct {
-		  a a
-		}
-		`,
+			name:   "nil receiver nil params multiple results",
+			recv:   nil,
+			params: nil,
+			results: []*types.Var{
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "a"}),
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "b"}),
 			},
+			variadic: false,
+			expected: []string{"a", "b"},
 		},
 		{
-			name:    "related type and function param",
-			pkgpath: "a",
-			files: map[string]string{"a/a.go": `package a
-		type a int
-
-		func fa(a a) {
-		}
-		`,
+			name: "nil receiver single param nil results",
+			recv: nil,
+			params: []*types.Var{
+				types.NewParam(token.Pos(1), &types.Package{}, "abc", &mockType{s: "a"}),
 			},
+			results:  nil,
+			variadic: false,
+			expected: []string{"a"},
 		},
 		{
-			name:    "related type and function usage",
-			pkgpath: "a",
-			files: map[string]string{"a/a.go": `package a
-		type a int
-
-		func fa() {
-		  _ = a(123)
-		}
-		`,
+			name: "nil receiver (func) multiple params nil results",
+			recv: nil,
+			params: []*types.Var{
+				types.NewParam(token.Pos(1), &types.Package{}, "abc", &mockType{s: "a"}),
+				types.NewParam(token.Pos(1), &types.Package{}, "abc", &mockType{s: "b"}),
 			},
+			results:  nil,
+			variadic: false,
+			expected: []string{"a", "b"},
 		},
 		{
-			name:    "related type and multiple functions",
-			pkgpath: "a",
-			files: map[string]string{"a/a.go": `package a
-		type a int
-
-		func fa(a a) {
-		}
-
-		func faa() {
-		  _ = a(123)
-		}
-		`,
+			name: "non-nil receiver params results",
+			recv: types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "a"}),
+			params: []*types.Var{
+				types.NewParam(token.Pos(1), &types.Package{}, "abc", &mockType{s: "b"}),
+				types.NewParam(token.Pos(1), &types.Package{}, "abc", &mockType{s: "c"}),
 			},
+			results: []*types.Var{
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "d"}),
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "e"}),
+			},
+			variadic: false,
+			expected: []string{"a", "b", "c", "d", "e"},
 		},
 		{
-			name:    "related type and method receiver (non-pointer)",
-			pkgpath: "a",
-			files: map[string]string{"a/a.go": `package a
-		type a int
-
-		func (a a) ma() {
-		}
-		`,
+			name: "non-nil receiver variadic params results",
+			recv: types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "a"}),
+			params: []*types.Var{
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "b"}),
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", types.NewSlice(&mockType{s: "c"})),
 			},
-		},
-		{
-			name:    "related type and method receiver (pointer)",
-			pkgpath: "a",
-			files: map[string]string{"a/a.go": `package a
-		type a int
-
-		func (a *a) ma() {
-		}
-		`,
+			results: []*types.Var{
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "d"}),
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "e"}),
 			},
+			variadic: true,
+			expected: []string{"a", "b", "c", "d", "e"},
 		},
-		{
-			name:    "related type and method param",
-			pkgpath: "ab",
-			files: map[string]string{"ab/ab.go": `package ab
-		type a int
-		type b int
+	}
 
-		func (b b) mb(a a) {
-		}
-		`,
-			},
-		},
-		{
-			name:    "related type method param and return values",
-			pkgpath: "abc",
-			files: map[string]string{"abc/abc.go": `package abc
-		type a int
-		type b int
-		type c int
-
-		func (b b) mb(a a) c {
-			return c(1)
-		}
-		`,
-			},
-		},
-		{
-			name:    "related type and method usage",
-			pkgpath: "ab",
-			files: map[string]string{"ab/ab.go": `package ab
-		type a int
-		type b int
-
-		func (b b) mb() {
-		  _ = a(123)
-		}
-		`,
-			},
-		},
-		{
-			name:    "related type and multiple methods",
-			pkgpath: "a",
-			files: map[string]string{"a/a.go": `package a
-		type a int
-
-		func fa(a a) {
-		}
-
-		func faa() {
-		  _ = a(123)
-		}
-		`,
-			},
-		},
-	} {
+	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			dir, cleanup, err := analysistest.WriteFiles(test.files)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer cleanup()
-			analysistest.Run(t, dir, splitfile.Analyzer, test.pkgpath)
+			actual := checkSignature(types.NewSignature(test.recv, types.NewTuple(test.params...), types.NewTuple(test.results...), test.variadic))
+			assert.Equal(t, test.expected, actual, "check signature returned unexpected results.")
+		})
+	}
+}
+
+func TestCheckVar(t *testing.T) {
+	tests := []struct {
+		name     string
+		v        *types.Var
+		expected string
+	}{
+		{
+			name:     "nil var",
+			v:        nil,
+			expected: "",
+		},
+		{
+			name:     "nil casted var",
+			v:        types.NewVar(token.Pos(0), &types.Package{}, "", types.Type(nil)),
+			expected: "",
+		},
+		{
+			name:     "nil type var",
+			v:        types.NewVar(token.Pos(0), &types.Package{}, "", &mockType{}),
+			expected: "",
+		},
+		{
+			name:     "nil type var with package",
+			v:        types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{}),
+			expected: "",
+		},
+		{
+			name:     "valid var",
+			v:        types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "a"}),
+			expected: "a",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actual := checkVar(test.v)
+			assert.Equal(t, test.expected, actual, "check var returned unexpected results.")
+		})
+	}
+}
+
+func TestCheckTuple(t *testing.T) {
+	tests := []struct {
+		name     string
+		vars     []*types.Var
+		expected []string
+	}{
+		{
+			name:     "empty tuple",
+			vars:     []*types.Var{},
+			expected: []string{},
+		},
+		{
+			name: "single empty var",
+			vars: []*types.Var{
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: ""}),
+			},
+			expected: []string{},
+		},
+		{
+			name: "multiple empty vars",
+			vars: []*types.Var{
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: ""}),
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: ""}),
+			},
+			expected: []string{},
+		},
+		{
+			name: "single valid var",
+			vars: []*types.Var{
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "a"}),
+			},
+			expected: []string{"a"},
+		},
+		{
+			name: "multiple valid vars",
+			vars: []*types.Var{
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "a"}),
+				types.NewVar(token.Pos(1), &types.Package{}, "abc", &mockType{s: "b"}),
+			},
+			expected: []string{"a", "b"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actual := checkTuple(types.NewTuple(test.vars...))
+			assert.Equal(t, test.expected, actual, "check tuple returned unexpected results.")
 		})
 	}
 }
