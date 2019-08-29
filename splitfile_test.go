@@ -53,6 +53,22 @@ func TestFindRelated(t *testing.T) {
 			},
 			expected: map[string][]string{"a.a": []string{"a.b", "method (a.a) ma() a.b"}, "a.b": []string{}},
 		},
+		{
+			name:    "method params one result",
+			pkgpath: "a",
+			files: map[string]string{"a/a.go": `package a
+			type a int
+			type b int
+			type c int
+			type d int
+
+			func (a a) ma(c c, d d) b {
+			return b(1)
+			}
+		`,
+			},
+			expected: map[string][]string{"a.a": []string{"a.b", "a.c", "a.d", "method (a.a) ma(c a.c, d a.d) a.b"}, "a.b": []string{}},
+		},
 	}
 
 	for _, test := range tests {
