@@ -80,7 +80,7 @@ func TestFindRelated(t *testing.T) {
 			defer cleanup()
 
 			cfg := &packages.Config{
-				Mode:  packages.LoadAllSyntax,
+				Mode:  packages.NeedTypesSizes | packages.NeedTypesInfo | packages.NeedSyntax | packages.NeedTypes | packages.NeedExportsFile | packages.NeedDeps | packages.NeedImports | packages.NeedCompiledGoFiles | packages.NeedFiles | packages.NeedName,
 				Dir:   dir,
 				Tests: true,
 				Env:   append(os.Environ(), "GOPATH="+dir, "GO111MODULE=off", "GOPROXY=off"),
@@ -151,7 +151,7 @@ func TestCheckMethods(t *testing.T) {
 			defer cleanup()
 
 			cfg := &packages.Config{
-				Mode:  packages.LoadAllSyntax,
+				Mode:  packages.NeedTypesSizes | packages.NeedTypesInfo | packages.NeedSyntax | packages.NeedTypes | packages.NeedExportsFile | packages.NeedDeps | packages.NeedImports | packages.NeedCompiledGoFiles | packages.NeedFiles | packages.NeedName,
 				Dir:   dir,
 				Tests: true,
 				Env:   append(os.Environ(), "GOPATH="+dir, "GO111MODULE=off", "GOPROXY=off"),
