@@ -60,7 +60,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 func findRelated(node types.Object) ([]string, error) {
 	rel := make([]string, 0)
 
-	related := checkMethods(types.NewMethodSet(node.Type()))
+	related := checkMethods(node, types.NewMethodSet(node.Type()))
 	rel = append(rel, related...)
 
 	// TODO: check other places for related (e.g., funcs, interfaces, etc.)
@@ -69,7 +69,7 @@ func findRelated(node types.Object) ([]string, error) {
 }
 
 // checkMethods checks methods' signatures for related types.
-func checkMethods(mset *types.MethodSet) []string {
+func checkMethods(node types.Object, mset *types.MethodSet) []string {
 	rel := make([]string, 0)
 
 	for i := 0; i < mset.Len(); i++ {
@@ -82,7 +82,12 @@ func checkMethods(mset *types.MethodSet) []string {
 		}
 
 		related := checkSignature(sig)
-		rel = append(rel, related...)
+		for _, r := range related {
+			if r == node.Type().String() {
+				continue
+			}
+			rel = append(rel, r)
+		}
 	}
 
 	return rel

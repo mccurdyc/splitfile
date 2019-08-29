@@ -3,9 +3,12 @@ package splitfile
 import (
 	"go/token"
 	"go/types"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/tools/go/analysis/analysistest"
+	"golang.org/x/tools/go/packages"
 )
 
 type mockType struct {
@@ -21,6 +24,75 @@ func (mt *mockType) String() string {
 }
 
 func TestCheckMethods(t *testing.T) {
+	tests := []struct {
+		name     string
+		pkgpath  string
+		files    map[string]string
+		expected map[string][]string
+	}{
+		{
+			name:    "no methods",
+			pkgpath: "a",
+			files: map[string]string{"a/a.go": `package a
+		type a int
+		`,
+			},
+			expected: make(map[string][]string),
+		},
+		{
+			name:    "method no params one result",
+			pkgpath: "a",
+			files: map[string]string{"a/a.go": `package a
+			type a int
+			type b int
+
+			func (a a) ma() b {
+			return b(1)
+			}
+		`,
+			},
+			expected: map[string][]string{"a.a": []string{"a.b", "method (a.a) ma() a.b"}, "a.b": []string{}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			dir, cleanup, err := analysistest.WriteFiles(test.files)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer cleanup()
+
+			cfg := &packages.Config{
+				Mode:  packages.LoadAllSyntax,
+				Dir:   dir,
+				Tests: true,
+				Env:   append(os.Environ(), "GOPATH="+dir, "GO111MODULE=off", "GOPROXY=off"),
+			}
+			pkgs, err := packages.Load(cfg, test.pkgpath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, p := range pkgs {
+				if len(p.Errors) > 0 {
+					t.Fatal(p.Errors[0])
+				}
+				defs := p.TypesInfo.Defs
+				for _, node := range defs {
+					// nil for a package definition
+					if node == nil {
+						continue
+					}
+
+					actual := checkMethods(node, types.NewMethodSet(node.Type()))
+					nodeKey := node.Type().String()
+					assert.ElementsMatch(t, test.expected[nodeKey], actual, "unexpected results from checkMethods.")
+				}
+			}
+		})
+	}
+
 }
 
 func TestCheckSignature(t *testing.T) {
