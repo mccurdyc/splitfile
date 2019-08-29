@@ -51,7 +51,7 @@ func TestFindRelated(t *testing.T) {
 			}
 		`,
 			},
-			expected: map[string][]string{"a.a": []string{"a.b", "method (a.a) ma() a.b"}, "a.b": []string{}},
+			expected: map[string][]string{"a.a": {"a.b", "method (a.a) ma() a.b"}, "a.b": {}},
 		},
 		{
 			name:    "method params one result",
