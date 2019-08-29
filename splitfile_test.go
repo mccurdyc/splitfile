@@ -51,7 +51,7 @@ func TestCheckMethods(t *testing.T) {
 			}
 		`,
 			},
-			expected: map[string][]string{"a.a": []string{"a.b", "method (a.a) ma() a.b"}, "a.b": []string{}},
+			expected: map[string][]string{"a.a": []string{"a.a", "a.b", "method (a.a) ma() a.b"}, "a.b": []string{}},
 		},
 	}
 
@@ -85,7 +85,7 @@ func TestCheckMethods(t *testing.T) {
 						continue
 					}
 
-					actual := checkMethods(node, types.NewMethodSet(node.Type()))
+					actual := checkMethods(types.NewMethodSet(node.Type()))
 					nodeKey := node.Type().String()
 					assert.ElementsMatch(t, test.expected[nodeKey], actual, "unexpected results from checkMethods.")
 				}
