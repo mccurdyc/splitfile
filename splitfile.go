@@ -62,6 +62,9 @@ func findRelated(node types.Object) ([]string, error) {
 
 	related := checkMethods(types.NewMethodSet(node.Type()))
 	for _, r := range related {
+		if r == node.Type().String() {
+			continue
+		}
 		rel = append(rel, r)
 	}
 
