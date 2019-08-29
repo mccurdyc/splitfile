@@ -17,3 +17,6 @@ and undirected edges define the relationships between declarations. splitifle id
 declarations will be defined as "common". Method declarations are an exception and
 will not be defined as common even if they are a common node in the graph. This is
 because of the way methods are declared and tied to exactly one type.
+
+## License
++ [GNU General Public License Version 3](./LICENSE)
