@@ -8,7 +8,7 @@ your package files.
 ## How it Works
 
 <p align="center">
-  <img width="500" height="500" src="https://github.com/mccurdyc/splitfile/blob/master/docs/imgs/splitfile-graph.png?raw=true">
+  <img width="500" height="500" src="https://github.com/mccurdyc/splitfile/blob/master/docs/imgs/splitfile.svg?raw=true">
 </p>
 
 splitfile builds a graph where nodes are `type`, `var`, `const,` or `func` declarations
