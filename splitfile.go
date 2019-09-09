@@ -28,10 +28,6 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		nodeKey := node.Type().String()
 		graph.AddNodes(nodeKey)
 
-		if !graph.ContainsNode(nodeKey) {
-			graph.AddNodes(nodeKey)
-		}
-
 		related, err := findRelated(node.(types.Object))
 		if err != nil {
 			continue
@@ -42,17 +38,42 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				continue
 			}
 
-			if !graph.ContainsNode(rel) {
-				graph.AddNodes(rel)
-			}
-
+			graph.AddNodes(rel)
 			graph.AddEdges(nodeKey, rel)
 		}
 	}
 
-	// findSplits()
+	findPartitions(graph)
 
-	return nil, nil // TODO: FIX THIS!
+	return nil, nil
+}
+
+// findPartitions traverses the graph --- using breadth-first search --- checking
+// for partitions using the geodesic (shortest-path) edge betweeness divisive algorithm of Girvan and Newman.
+// Since we are analyzing an "unweighted" graph --- i.e., a graph where all edges are equal --- we
+// assign equal weights of 1 to all edges for the shortest-path calculation.
+//
+// As described in the Fortunato paper, the algorithm behaves as follows:
+//
+//		1. Computation of the centrality for all edges
+// 		2. Removal of edge with largest centrality: in case of ties with other edges, one of them is picked at random
+// 		3. Recalculation of centralities on the running graph
+// 		4. Iteration of the cycle from step 2
+//
+// Community detection in graphs - Santo Fortunato
+// 	* https://arxiv.org/abs/0906.0612
+//
+// Betweenness-based decomposition methods for social and biological networks
+// 	(Uses edge and vertex betweeness) for overlapping communities
+// 	* http://www1.maths.leeds.ac.uk/Statistics/workshop/lasr2006/proceedings/pinney-talk.pdf
+//
+// A Faster Algorithm for Betweenness Centrality - https://kops.uni-konstanz.de/bitstream/handle/123456789/5739/algorithm.pdf
+// Brandes' algorithm:
+// 	* https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.72.9610&rep=rep1&type=pdf
+// 	* (unofficial paper) https://www.cl.cam.ac.uk/teaching/1617/MLRD/handbook/brandes.pdf
+func findPartitions(graph *nodegraph.Graph) {
+	// iterate through keys (nodes)
+	// need to find uniqueness in the related edges for a given node
 }
 
 // findRelated given a root node attempts to find relationships
