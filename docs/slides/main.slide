@@ -1,0 +1,107 @@
+
+mccurdyc/splitfile
+A static analysis tool to improve Go code readability by clustering and partitioning declarations and their uses.
+08 Sep 2019
+Tags:
+
+Colton J. McCurdy
+coltonjmccurdy@gmail.com
+https://mccurdyc.dev
+@mccurdycolton
+
+* Background
+Dependency Management with Modules
+
+No more `$GOPATH`
+
+In Go 1.13 release this past week
+
+- Proxy/Mirror (Caching)
+- Checksum database
+
+This does introduce challenges for repositories that don't support modules
+
+* x/tools/go/loader
+Non-module package loading
+
+"Deprecated: This is an older API and does not have support for modules. Use golang.org/x/tools/go/packages instead."
+
+  // zimmski/go-mutesting
+
+  var conf = loader.Config{
+      ParserMode: parser.AllErrors | parser.ParseComments,
+  }
+
+  // ...
+
+  prog, err := conf.Load()
+  if err != nil {
+    return ..., fmt.Errorf("Could not load package of file %q: %v", file, err)
+  }
+
+
+* x/tools/go/packages
+Supports modules
+
+Very similar API
+
+  // mccurdyc/splitfile
+
+  cfg := &packages.Config{
+    Mode:  packages.NeedTypesSizes | packages.NeedTypesInfo | packages.NeedSyntax | packages.NeedTypes | packages.NeedExportsFile | packages.NeedDeps | packages.NeedImports | packages.NeedCompiledGoFiles | packages.NeedFiles | packages.NeedName,
+    Dir:   dir,
+    Tests: true,
+    Env:   append(os.Environ(), "GOPATH="+dir, "GO111MODULE=off", "GOPROXY=off"),
+  }
+
+  pkgs, err := packages.Load(cfg, test.pkgpath)
+  if err != nil {
+    t.Fatal(err)
+  }
+
+* x/tools/go/analysis
+"A static analysis is a function that inspects a package of Go code and reports a set of diagnostics (typically mistakes in the code), and perhaps produces other results as well, such as suggested refactorings or other facts. An analysis that reports mistakes is informally called a "checker". For example, the printf checker reports mistakes in fmt.Printf format strings."
+
+Uses the new `x/tools/go/packages` under the hood for loading packages
+
+  package splitfile
+
+  import ...
+
+  var Analyzer = &analysis.Analyzer{
+    Name:     "splitfile",
+    Doc:      "checks for clean splits of files in packages based on objects and their relationships with other objects.",
+    Requires: []*analysis.Analyzer{inspect.Analyzer},
+    Run:      run,
+  }
+
+  func run(pass *analysis.Pass) (interface{}, error) {...}
+
+* mccurdyc/splitfile
+Go package clustering and partitioning of declarations and their uses
+
+Improve the readability of Go code
+
+Automate review comments like, "You should split this file into multiple files."
+
+Consistent package file structure
+
+Easy to identify entrypoints and find declarations
+
+"It's sort of like you're taking 'prettifying' out of the code file and into the filesystem" -Joe
+
+* Unweighted, Directed Graphs
+
+Interested in the clustering (and partitioning) of declarations and their uses
+
+.image imgs/splitfile.png
+
+* Divisive (Cluster Partition) Algorithms
+
+Girvan and Newman's "betweenness"
+.link https://www.pnas.org/content/pnas/99/12/7821.full.pdf Community structure in social and biological networks
+.link https://arxiv.org/pdf/0906.0612v2.pdf Community detection in graphs
+
+"Centrality" - summarized as the number of shortest paths including a given edge
+
+.image imgs/betweenness.png
