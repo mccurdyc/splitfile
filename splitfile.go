@@ -6,7 +6,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 
-	"github.com/mccurdyc/splitfile/pkg/nodegraph"
+	"github.com/mccurdyc/splitfile/internal/graph"
 )
 
 var Analyzer = &analysis.Analyzer{
@@ -17,16 +17,15 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	graph := nodegraph.New()
+	graph := graph.New()
 
-	for _, node := range pass.TypesInfo.Defs {
+	for _, def := range pass.TypesInfo.Defs {
 		// nil for a package definition
-		if node == nil {
+		if def == nil {
 			continue
 		}
 
-		nodeKey := node.Type().String()
-		graph.AddNodes(nodeKey)
+		graph.AddNode(def.Type().String())
 
 		related, err := findRelated(node.(types.Object))
 		if err != nil {
@@ -49,31 +48,16 @@ func run(pass *analysis.Pass) (interface{}, error) {
 }
 
 // findPartitions traverses the graph --- using breadth-first search --- checking
-// for partitions using the geodesic (shortest-path) edge betweeness divisive algorithm of Girvan and Newman.
-// Since we are analyzing an "unweighted" graph --- i.e., a graph where all edges are equal --- we
-// assign equal weights of 1 to all edges for the shortest-path calculation.
+// for partitions using the strongest strong distance (d_ss) and a configurable epsilon (ε).
 //
-// As described in the Fortunato paper, the algorithm behaves as follows:
+// Weights are configured and assigned to the various edge types (i.e., type->method, type->type, etc.)
 //
-//		1. Computation of the centrality for all edges
-// 		2. Removal of edge with largest centrality: in case of ties with other edges, one of them is picked at random
-// 		3. Recalculation of centralities on the running graph
-// 		4. Iteration of the cycle from step 2
-//
-// Community detection in graphs - Santo Fortunato
-// 	* https://arxiv.org/abs/0906.0612
-//
-// Betweenness-based decomposition methods for social and biological networks
-// 	(Uses edge and vertex betweeness) for overlapping communities
-// 	* http://www1.maths.leeds.ac.uk/Statistics/workshop/lasr2006/proceedings/pinney-talk.pdf
-//
-// A Faster Algorithm for Betweenness Centrality - https://kops.uni-konstanz.de/bitstream/handle/123456789/5739/algorithm.pdf
-// Brandes' algorithm:
-// 	* https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.72.9610&rep=rep1&type=pdf
-// 	* (unofficial paper) https://www.cl.cam.ac.uk/teaching/1617/MLRD/handbook/brandes.pdf
+//		1. Computation of the d_ss for all edges
+// 		2. Remove edges where d_ss > (ε)
 func findPartitions(graph *nodegraph.Graph) {
-	// iterate through keys (nodes)
-	// need to find uniqueness in the related edges for a given node
+	// 1. iterate through graph keys (nodes) ENQUEUE
+	// 2. DEQUEUE and PUSH to stack
+	// 3. for each child node of each parent node
 }
 
 // findRelated given a root node attempts to find relationships
