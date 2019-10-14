@@ -1,12 +1,14 @@
 package splitfile
 
 import (
+	"go/ast"
+
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 
-	"github.com/mccurdyc/splitfile/pkg/nodegraph"
+	"github.com/mccurdyc/splitfile/internal/graph"
 )
 
 var Analyzer = &analysis.Analyzer{
@@ -17,69 +19,86 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	graph := nodegraph.New()
+	g := traverse(pass.TypesInfo.Defs)
 
-	for _, node := range pass.TypesInfo.Defs {
-		// nil for a package definition
-		if node == nil {
+	nodes := g.Partition() // TODO (Issue#8): right now, this returns every single node in the graph
+	for _, n := range nodes {
+		pass.Reportf(n.Object.Pos(), "parition found - %+v", n)
+	}
+
+	return nil, nil
+}
+
+// traverse traverses the map of definitions and builds a graph based on the
+// relationships.
+func traverse(defs map[*ast.Ident]types.Object) graph.Graph {
+	g := graph.New()
+
+	for _, def := range defs {
+
+		if skip := filter(def); skip {
 			continue
 		}
 
-		nodeKey := node.Type().String()
-		graph.AddNodes(nodeKey)
-
-		if !graph.ContainsNode(nodeKey) {
-			graph.AddNodes(nodeKey)
-		}
-
-		related, err := findRelated(node.(types.Object))
+		node := graph.NewNode(def.Type().String(), def.(types.Object))
+		err := g.AddNode(node)
 		if err != nil {
 			continue
 		}
 
-		for _, rel := range related {
-			if rel == "" || rel == nodeKey {
-				continue
-			}
-
-			if !graph.ContainsNode(rel) {
-				graph.AddNodes(rel)
-			}
-
-			graph.AddEdges(nodeKey, rel)
+		err = addRelated(g, node)
+		if err != nil {
+			continue
 		}
 	}
 
-	// findSplits()
-
-	return nil, nil // TODO: FIX THIS!
+	return g
 }
 
-// findRelated given a root node attempts to find relationships
-// with other declarations in the same package.
-func findRelated(node types.Object) ([]string, error) {
-	rel := make([]string, 0)
+// filter returns whether or not a def should be filtered out.
+func filter(def types.Object) bool {
+	if def == nil {
+		return true
+	}
 
-	related := checkMethods(types.NewMethodSet(node.Type()))
-	for _, r := range related {
-		if r == node.Type().String() {
+	return false
+}
+
+// addRelated given a graph, g, and root node finds relationships
+// with other declarations in the same package and adds them to the graph.
+//
+// TODO (Issue #15): read value from config or use default
+// TODO: check other places for related (e.g., funcs, interfaces, etc.)
+func addRelated(g graph.Graph, node *graph.Node) error {
+	m := checkMethods(types.NewMethodSet(node.Object.Type()))
+
+	for _, r := range m {
+		if r.ID == node.ID {
 			continue
 		}
-		rel = append(rel, r)
+
+		err := g.AddNode(r)
+		if err != nil {
+			continue
+		}
+
+		node.AddEdge(r, 5.0) // TODO (Issue #15): read value from config or use default
 	}
 
 	// TODO: check other places for related (e.g., funcs, interfaces, etc.)
 
-	return rel, nil
+	return nil
 }
 
 // checkMethods checks methods' signatures for related types.
-func checkMethods(mset *types.MethodSet) []string {
-	rel := make([]string, 0)
+func checkMethods(mset *types.MethodSet) []*graph.Node {
+	rel := make([]*graph.Node, 0)
 
 	for i := 0; i < mset.Len(); i++ {
 		method := mset.At(i)
-		rel = append(rel, method.String()) // methods themselves are always related
+
+		m := graph.NewNode(method.String(), method.Obj())
+		rel = append(rel, m) // methods themselves are always related
 
 		sig, ok := method.Type().(*types.Signature)
 		if !ok {
@@ -95,10 +114,10 @@ func checkMethods(mset *types.MethodSet) []string {
 
 // checkSignature checks a function signature, the receiver (if it is a method this
 // will be a non-nil value), the parameters and the return types.
-func checkSignature(sig *types.Signature) []string {
-	rel := make([]string, 0)
+func checkSignature(sig *types.Signature) []*graph.Node {
+	rel := make([]*graph.Node, 0)
 
-	if v := checkVar(sig.Recv()); v != "" {
+	if v := checkVar(sig.Recv()); v != nil {
 		rel = append(rel, v)
 	}
 	rel = append(rel, checkTuple(sig.Params())...)
@@ -108,31 +127,22 @@ func checkSignature(sig *types.Signature) []string {
 }
 
 // checkVar validates a variable and if it is valid, it is returned as a valid related.
-func checkVar(v *types.Var) string {
+func checkVar(v *types.Var) *graph.Node {
 	if v == nil || v.Type() == types.Type(nil) {
-		return ""
+		return nil
 	}
 
-	var res string
-
-	switch t := v.Type().(type) {
-	case *types.Slice:
-		res = t.Elem().String()
-	default:
-		res = t.String()
-	}
-
-	return res
+	return graph.NewNode(v.String(), v)
 }
 
 // checkTuple checks a tuple of variables for related nodes.
-func checkTuple(vars *types.Tuple) []string {
-	rel := make([]string, 0)
+func checkTuple(vars *types.Tuple) []*graph.Node {
+	rel := make([]*graph.Node, 0)
 
 	for i := 0; i < vars.Len(); i++ {
 		v := checkVar(vars.At(i))
 
-		if v == "" {
+		if v == nil {
 			continue
 		}
 
