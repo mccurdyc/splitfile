@@ -3,9 +3,9 @@ package splitfile_test
 import (
 	"testing"
 
-	"github.com/mccurdyc/splitfile"
-
 	"golang.org/x/tools/go/analysis/analysistest"
+
+	"github.com/mccurdyc/splitfile"
 )
 
 // TestFromFileSystem demonstrates how to test an analysis using input
@@ -33,19 +33,32 @@ func TestFromStringLiterals(t *testing.T) {
 		files   map[string]string
 	}{
 		{
-			name:    "single type",
+			name:    "single_type",
 			pkgpath: "a",
 			files: map[string]string{"a/a.go": `package a
 		type a int
 		`,
 			},
 		},
+
 		{
-			name:    "small file un-related types",
+			name:    "small_file_un-related_types",
 			pkgpath: "ab",
 			files: map[string]string{"ab/ab.go": `package ab
 		type a int
 		type b int
+		`,
+			},
+		},
+
+		{
+			name:    "small file un-related types different syntax",
+			pkgpath: "ab",
+			files: map[string]string{"ab/ab.go": `package ab
+		type (
+			a int
+			b int
+		)
 		`,
 			},
 		},
