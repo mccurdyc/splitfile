@@ -71,7 +71,7 @@ func TestAddNode(t *testing.T) {
 			graph:   Graph(map[string]*Node{}),
 			node:    &Node{ID: "abc"},
 			want:    Graph(map[string]*Node{}),
-			wantErr: errors.New("could not add invalid node: invalid node; edge map must be initializated"),
+			wantErr: errors.New("could not add invalid node: invalid node; edge map must be initialized"),
 		},
 
 		{
@@ -93,8 +93,8 @@ func TestAddNode(t *testing.T) {
 		{
 			name:    "add-valid-node-to-non-empty-graph-should-return-graph-with-new-node-added",
 			graph:   Graph(map[string]*Node{"a": &nodeAWithSingleEdgeB}),
-			node:    &nodeAWithSingleEdgeB,
-			want:    Graph(map[string]*Node{"c": &nodeCWithSingleEdgeB}),
+			node:    &nodeCWithSingleEdgeB,
+			want:    Graph(map[string]*Node{"a": &nodeAWithSingleEdgeB, "c": &nodeCWithSingleEdgeB}),
 			wantErr: nil,
 		},
 	}
@@ -103,23 +103,8 @@ func TestAddNode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			gotErr := test.graph.AddNode(test.node)
 
-			errorCmp := cmp.Comparer(func(x, y error) bool {
-				if x != nil && y == nil {
-					return false
-				}
-
-				if x == nil && y != nil {
-					return false
-				}
-
-				if x.Error() != y.Error() {
-					return false
-				}
-				return true
-			})
-
-			if ok := cmp.Equal(gotErr, test.wantErr, errorCmp); !ok {
-				t.Errorf("(%+v) AddNode(%+v) = %v wantErr %v", test.graph, test.node, gotErr, test.wantErr)
+			if (gotErr == nil && test.wantErr != nil) || (gotErr != nil && test.wantErr == nil) {
+				t.Errorf("(%+v) AddNode(%+v) = '%v' wantErr '%v'", test.graph, test.node, gotErr, test.wantErr)
 			}
 
 			if diff := cmp.Diff(test.want, test.graph); diff != "" {
@@ -136,7 +121,26 @@ func TestContainsNode(t *testing.T) {
 		id    string
 		want  bool
 	}{
-		{},
+		{
+			name:  "contains-node-should-return-true",
+			graph: Graph(map[string]*Node{"a": &nodeAWithSingleEdgeB}),
+			id:    "a",
+			want:  true,
+		},
+
+		{
+			name:  "doesnt-contain-node-should-return-false",
+			graph: Graph(map[string]*Node{"a": &nodeAWithSingleEdgeB}),
+			id:    "b",
+			want:  false,
+		},
+
+		{
+			name:  "empty-graph-should-return-false",
+			graph: Graph(map[string]*Node{}),
+			id:    "a",
+			want:  false,
+		},
 	}
 
 	for _, test := range tests {

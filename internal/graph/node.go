@@ -1,6 +1,9 @@
 package graph
 
-import "errors"
+import (
+	"errors"
+	"go/types"
+)
 
 // WeightedEdge contains pointers to source and destination Nodes as well as
 // the assigned weight of the relationship.
@@ -12,15 +15,17 @@ type WeightedEdge struct {
 // Node has an ID and a map of WeightedEdges or weighted relationships to other
 // Nodes.
 type Node struct {
-	ID    string
-	Edges map[string]WeightedEdge
+	ID     string
+	Object types.Object
+	Edges  map[string]WeightedEdge
 }
 
 // NewNode creates a pointer to a new Node with ID, id, and initializes a map of Edges.
-func NewNode(id string) *Node {
+func NewNode(id string, obj types.Object) *Node {
 	return &Node{
-		ID:    id,
-		Edges: make(map[string]WeightedEdge),
+		ID:     id,
+		Object: obj,
+		Edges:  make(map[string]WeightedEdge),
 	}
 }
 
