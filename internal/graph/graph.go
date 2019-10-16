@@ -59,24 +59,27 @@ func (g Graph) ContainsNode(id string) bool {
 // 3. calculate distance of every root -> leaf
 //   a. return paths and their weights
 func (g Graph) Partition(epsilon float64) [][]Node {
-	visited := make(map[string]map[string][]float64)
 
 	for _, root := range g {
-		calculateDistance := func(a, b *Node, m map[string]map[string][]float64) {
-			m[a.ID][b.ID] = append(m[a.ID][b.ID], .Weight)
-		}
+		visited := make(map[string]bool)
+		recursiveBFS(root, visited, appendPaths)
 
-		bfs(root, visited)
+		// iterate through shortest paths and calculate connectedness and then distance
+		// sum connectedness
 	}
+
+	// TODO: calculate distance
+	// n.Distance = calculateDistance()
+	// 1 over the sum of connectedness
 }
 
-func bfs(root *Node, visited map[string]map[string][]float64, fn func(*Node, *Node, map[string]map[string][]float64)) {
+func recursiveBFS(root *Node, visited map[string]bool, fn func(a, b *Node)) {
 	queue := list.New()
-	visited[root.ID] = make(map[string][]float64) // paths [root][edge] and their distances
+	visited[root.ID] = true
 
 	for _, edge := range root.Edges {
 		if _, ok := visited[edge.Dest.ID]; ok {
-			fn(root, edge.Dest, visited)
+			fn(root, edge.Dest)
 			continue
 		}
 
@@ -90,7 +93,15 @@ func bfs(root *Node, visited map[string]map[string][]float64, fn func(*Node, *No
 			continue
 		}
 
-		bfs(n, visited, fn)
+		recursiveBFS(n, visited, fn)
+	}
+}
+
+// appendPaths appends that paths of the edge to the paths of the root.
+func appendPaths(root, edge *Node) {
+	for _, path := range edge.Paths {
+		path = append([]*Node{root}, path...) // add the new root to the beginning
+		root.Paths = append(root.Paths, path)
 	}
 }
 

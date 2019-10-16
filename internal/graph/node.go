@@ -15,17 +15,21 @@ type WeightedEdge struct {
 // Node has an ID and a map of WeightedEdges or weighted relationships to other
 // Nodes.
 type Node struct {
-	ID     string
-	Object types.Object
-	Edges  map[string]WeightedEdge
+	ID            string
+	Object        types.Object
+	Edges         map[string]WeightedEdge
+	Paths [][]*Node
+	// ConnectednessStrength is the current "strongest" or highest shortest path distance
+	ConnectednessStrength float64
 }
 
 // NewNode creates a pointer to a new Node with ID, id, and initializes a map of Edges.
 func NewNode(id string, obj types.Object) *Node {
 	return &Node{
-		ID:     id,
-		Object: obj,
-		Edges:  make(map[string]WeightedEdge),
+		ID:            id,
+		Object:        obj,
+		Edges:         make(map[string]WeightedEdge),
+		Paths: make([][]*Node, 0), // going to dynamically resize
 	}
 }
 
