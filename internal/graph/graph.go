@@ -49,6 +49,19 @@ func (g Graph) ContainsNode(id string) bool {
 	return ok
 }
 
+// FindRoots finds the many possible roots in the graph.
+func (g Graph) FindRoots() []*Node {
+	roots := make([]*Node, 0, len(g))
+
+	for _, node := range g {
+		if len(node.Parents) == 0 {
+			roots = append(roots, node)
+		}
+	}
+
+	return roots
+}
+
 // Partition returns a slice of nodes that should be split from a given source graph.
 // thoughts:
 // 1. we dont necessarily know how the graph is structured; we do know the nodes
@@ -59,27 +72,57 @@ func (g Graph) ContainsNode(id string) bool {
 // 3. calculate distance of every root -> leaf
 //   a. return paths and their weights
 func (g Graph) Partition(epsilon float64) [][]Node {
+	roots := g.FindRoots()
 
-	for _, root := range g {
+	for _, root := range roots {
 		visited := make(map[string]bool)
-		recursiveBFS(root, visited, appendPaths)
+		recursiveBFS(root, visited)
 
-		// iterate through shortest paths and calculate connectedness and then distance
-		// sum connectedness
+		for _, node := range g {
+			node.StrongestShortestPathLens = append(node.StrongestShortestPathLens, node.StrongestShortestPathLen)
+		}
 	}
 
-	// TODO: calculate distance
-	// n.Distance = calculateDistance()
-	// 1 over the sum of connectedness
+	g.calculateDistances()
+	g.identifyPartitions(epsilon)
+
 }
 
-func recursiveBFS(root *Node, visited map[string]bool, fn func(a, b *Node)) {
-	queue := list.New()
-	visited[root.ID] = true
+func (g Graph) identifyPartitions(epsilon float64) {
+	// TODO: partitions should be edges, not nodes
 
-	for _, edge := range root.Edges {
+	partitions := make([]*Node)
+	for _, node := range g {
+		if node.Distance > epsilon {
+			node.Partition = true
+		}
+	}
+}
+
+// TODO: distances should be on edges, not nodes
+func (g Graph) calculateDistances() {
+	for _, node := range g {
+		var sum float64
+		for _, sp := range node.StrongestShortestPathLens {
+			sum += sp
+		}
+
+		node.Distance = 1 / (sum)
+	}
+}
+
+func recursiveBFS(node *Node, visited map[string]bool) {
+	queue := list.New()
+	visited[node.ID] = true
+
+	for _, edge := range node.Edges {
 		if _, ok := visited[edge.Dest.ID]; ok {
-			fn(root, edge.Dest)
+
+			p := node.StrongestShortestPathLen + edge.Weight
+			if edge.Dest.StrongestShortestPathLen < p {
+				edge.Dest.StrongestShortestPathLen = p
+			}
+
 			continue
 		}
 
@@ -87,21 +130,14 @@ func recursiveBFS(root *Node, visited map[string]bool, fn func(a, b *Node)) {
 	}
 
 	for queue.Len() > 0 {
-		e := queue.Front()
-		n, ok := e.Value.(*Node)
+		n := queue.Front()
+		e, ok := n.Value.(*Node)
 		if !ok {
 			continue
 		}
 
-		recursiveBFS(n, visited, fn)
-	}
-}
-
-// appendPaths appends that paths of the edge to the paths of the root.
-func appendPaths(root, edge *Node) {
-	for _, path := range edge.Paths {
-		path = append([]*Node{root}, path...) // add the new root to the beginning
-		root.Paths = append(root.Paths, path)
+		e.StrongestShortestPathLen = node.StrongestShortestPathLen + node.Edges[e.ID].Weight
+		recursiveBFS(e, visited)
 	}
 }
 

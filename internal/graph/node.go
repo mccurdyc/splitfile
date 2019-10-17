@@ -5,6 +5,10 @@ import (
 	"go/types"
 )
 
+const (
+	defaultConnectednessValue = -1 // default to an invalid, "infinity", value.
+)
+
 // WeightedEdge contains pointers to source and destination Nodes as well as
 // the assigned weight of the relationship.
 type WeightedEdge struct {
@@ -15,25 +19,28 @@ type WeightedEdge struct {
 // Node has an ID and a map of WeightedEdges or weighted relationships to other
 // Nodes.
 type Node struct {
-	ID            string
-	Object        types.Object
-	Edges         map[string]WeightedEdge
-	Paths [][]*Node
-	// ConnectednessStrength is the current "strongest" or highest shortest path distance
-	ConnectednessStrength float64
+	ID                       string
+	Object                   types.Object
+	Edges                    map[string]WeightedEdge
+	Parents                  map[string]WeightedEdge
+	StrongestShortestPathLen float64 // used for a single graph traversals
+
+	StrongestShortestPathLens []float64 // used across multiple graph traversals
+	Distance                  float64
 }
 
 // NewNode creates a pointer to a new Node with ID, id, and initializes a map of Edges.
 func NewNode(id string, obj types.Object) *Node {
 	return &Node{
-		ID:            id,
-		Object:        obj,
-		Edges:         make(map[string]WeightedEdge),
-		Paths: make([][]*Node, 0), // going to dynamically resize
+		ID:      id,
+		Object:  obj,
+		Edges:   make(map[string]WeightedEdge),
+		Parents: make(map[string]WeightedEdge),
 	}
 }
 
 // AddEdges adds weighted edges to a source node that signify relationships with other nodes.
+// Also adds parents to the destination node.
 func (n *Node) AddEdge(dest *Node, w float64) {
 	// prevent edge between node and itself
 	if n.ID == dest.ID {
@@ -43,6 +50,11 @@ func (n *Node) AddEdge(dest *Node, w float64) {
 	n.Edges[dest.ID] = WeightedEdge{
 		Weight: w,
 		Dest:   dest,
+	}
+
+	dest.Parents[n.ID] = WeightedEdge{
+		Weight: w,
+		Dest:   n,
 	}
 }
 
