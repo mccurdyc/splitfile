@@ -12,21 +12,26 @@ const (
 // WeightedEdge contains pointers to source and destination Nodes as well as
 // the assigned weight of the relationship.
 type WeightedEdge struct {
-	Weight float64
-	Dest   *Node
+	Weight       float64
+	Source, Dest *Node
+
+	ConnectednessStrength float64
+	MinPathStrengths      []float64 // used across multiple graph traversals
+
+	Partition bool
+	Distance  float64
 }
 
 // Node has an ID and a map of WeightedEdges or weighted relationships to other
 // Nodes.
 type Node struct {
-	ID                       string
-	Object                   types.Object
-	Edges                    map[string]WeightedEdge
-	Parents                  map[string]WeightedEdge
-	StrongestShortestPathLen float64 // used for a single graph traversals
+	ID      string
+	Object  types.Object
+	Edges   map[string]WeightedEdge
+	Parents map[string]WeightedEdge // TODO: may be able to delete this now
 
-	StrongestShortestPathLens []float64 // used across multiple graph traversals
-	Distance                  float64
+	MinPathStrength float64
+	ShortestPathLen float64 // used for a single graph traversals
 }
 
 // NewNode creates a pointer to a new Node with ID, id, and initializes a map of Edges.

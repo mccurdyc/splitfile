@@ -74,40 +74,45 @@ func (g Graph) FindRoots() []*Node {
 func (g Graph) Partition(epsilon float64) [][]Node {
 	roots := g.FindRoots()
 
+	edges := make([]WeightedEdge, 0)
+	for _, node := range g {
+		for _, edge := range node.Edges {
+			edges = append(edges, edge)
+		}
+	}
+
 	for _, root := range roots {
 		visited := make(map[string]bool)
 		recursiveBFS(root, visited)
 
-		for _, node := range g {
-			node.StrongestShortestPathLens = append(node.StrongestShortestPathLens, node.StrongestShortestPathLen)
+		for _, edge := range edges {
+			// skip if the node is the root because we don't want to add '0' to the slice of
+			// seen min paths. This could lead to division by zero.
+			if edge.Source == root {
+				continue
+			}
+			edge.MinPathStrengths = append(edge.MinPathStrengths, edge.Source.MinPathStrength)
 		}
 	}
 
-	g.calculateDistances()
-	g.identifyPartitions(epsilon)
-
+	g.calculateDistances(edges)
+	g.identifyPartitions(edges, epsilon)
 }
 
 func (g Graph) identifyPartitions(epsilon float64) {
-	// TODO: partitions should be edges, not nodes
-
-	partitions := make([]*Node)
-	for _, node := range g {
-		if node.Distance > epsilon {
-			node.Partition = true
-		}
-	}
 }
 
-// TODO: distances should be on edges, not nodes
 func (g Graph) calculateDistances() {
 	for _, node := range g {
-		var sum float64
-		for _, sp := range node.StrongestShortestPathLens {
-			sum += sp
-		}
+		for _, edge := range node.Edges {
 
-		node.Distance = 1 / (sum)
+			var sum float64
+			for _, mps := range edge.MinPathStrengths {
+				sum += mps
+			}
+
+			edge.Distance = 1 / (sum)
+		}
 	}
 }
 
@@ -117,10 +122,26 @@ func recursiveBFS(node *Node, visited map[string]bool) {
 
 	for _, edge := range node.Edges {
 		if _, ok := visited[edge.Dest.ID]; ok {
+			var updateChildren bool
 
-			p := node.StrongestShortestPathLen + edge.Weight
-			if edge.Dest.StrongestShortestPathLen < p {
-				edge.Dest.StrongestShortestPathLen = p
+			if edge.Weight < edge.Dest.MinPathStrength {
+				edge.Dest.MinPathStrength = edge.Weight
+				updateChildren = true
+			}
+
+			if node.MinPathStrength < edge.Dest.MinPathStrength {
+				edge.Dest.MinPathStrength = node.ShortestPathLen
+				updateChildren = true
+			}
+
+			pLen := node.ShortestPathLen + edge.Weight
+			if pLen < edge.Dest.ShortestPathLen {
+				edge.Dest.ShortestPathLen = pLen
+				updateChildren = true
+			}
+
+			if updateChildren {
+				queue.PushBack(edge.Dest)
 			}
 
 			continue
@@ -136,7 +157,9 @@ func recursiveBFS(node *Node, visited map[string]bool) {
 			continue
 		}
 
-		e.StrongestShortestPathLen = node.StrongestShortestPathLen + node.Edges[e.ID].Weight
+		e.ShortestPathLen = node.ShortestPathLen + node.Edges[e.ID].Weight
+		e.MinPathStrength = node.Edges[e.ID].Weight
+
 		recursiveBFS(e, visited)
 	}
 }
