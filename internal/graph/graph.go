@@ -62,16 +62,16 @@ func (g Graph) FindRoots() []*Node {
 	return roots
 }
 
-// Partition returns a slice of nodes that should be split from a given source graph.
-// thoughts:
-// 1. we dont necessarily know how the graph is structured; we do know the nodes
-//   a. this is why we have to traverse from every node as the root
-// 2. we need the distance between every pair of _connected_ nodes
-//   a. we have all of the edge weights
-//   b. we dont yet know about connectedness (we'll find that out here when we traverse the graph)
-// 3. calculate distance of every root -> leaf
-//   a. return paths and their weights
-func (g Graph) Partition(epsilon float64) [][]Node {
+// Partition returns a slice of WeightedEdges that should be partitioned (i.e., "broken").
+// The pseudo-algorithm for Partition is as follows:
+// 1. find root nodes
+// 2. find all edges in the graph
+// 3. for each root
+// 		a. recursively traverse the graph to identify the min shortest path to get to a node
+// 		b. for each edge in the graph, store the min shortest path to a node from the root under observation
+// 4. calculate edge distances
+// 5. identify edges where the sum of cross-iteration distances > epsilon
+func (g Graph) Partition(epsilon float64) []WeightedEdge {
 	roots := g.FindRoots()
 
 	edges := make([]WeightedEdge, 0)
@@ -95,27 +95,55 @@ func (g Graph) Partition(epsilon float64) [][]Node {
 		}
 	}
 
-	g.calculateDistances(edges)
-	g.identifyPartitions(edges, epsilon)
+	dists := g.calculateDistances(edges)
+	return g.identifyPartitions(dists, epsilon)
 }
 
-func (g Graph) identifyPartitions(epsilon float64) {
-}
+// calculateDistances calculates the strongest strong distance of an edge from
+// every possible root in the graph.
+//
+// The strongest strong distance is defined as:
+// * 1 / CONN(u, v)
+//   * where CONN(u, v) denotes the strength of connectedness of a pair of vertices.
+//   * CONN(u, v) is defined as the MAX{s(P)}, where s(P) denotes the MIN edge weight in a path.
+//   * CONN(u, v) can be summarized as the max, weakest edge between nodes of various paths.
+//
+// "Distances in Weighted Graphs" with authors Dhanyamol M V and Sunil Mathew.
+//   * http://www.researchmathsci.org/apamart/apam-v8n1-1.pdf
+//
+// In splitfile, we modify this equation slightly to get a more global understanding
+// * 1 / SUM(CONN(u, v))
+// 	 * where we are summing the CONN(u, v) from different roots
+//
+// If you are interested in my notes/highlights, check out this Tweet
+//   * https://twitter.com/McCurdyColton/status/1179024173664002049?s=20
+func (g Graph) calculateDistances(edges []WeightedEdge) []WeightedEdge {
+	res := make([]WeightedEdge, 0, len(edges))
 
-func (g Graph) calculateDistances() {
-	for _, node := range g {
-		for _, edge := range node.Edges {
+	for _, edge := range edges {
 
-			var sum float64
-			for _, mps := range edge.MinPathStrengths {
-				sum += mps
-			}
-
-			edge.Distance = 1 / (sum)
+		var sum float64
+		for _, mps := range edge.MinPathStrengths {
+			sum += mps
 		}
+
+		edge.Distance = 1 / (sum)
+		res = append(res, edge)
 	}
+
+	return res
 }
 
+// identifyPartitions identifies the edges where the distance is greater than the
+// configured epsilon value. These edges will be split/"broken".
+func (g Graph) identifyPartitions(edges []WeightedEdge, epsilon float64) []WeightedEdge {
+	res := make([]WeightedEdge, 0, len(edges))
+
+	return res
+}
+
+// recursiveBFS does recursive breadth-first search of the graph, keeping track
+// of shortest path and the mininimum path strength (i.e., the weaked edge in a path).
 func recursiveBFS(node *Node, visited map[string]bool) {
 	queue := list.New()
 	visited[node.ID] = true
