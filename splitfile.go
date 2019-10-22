@@ -13,7 +13,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "splitfile",
-	Doc:      "checks for clean splits of files in packages based on objects and their relationships with other objects.",
+	Doc:      "A static analysis that identifies partitions of declarations and their uses to improve the readability of Go packages.",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }
@@ -21,9 +21,9 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (interface{}, error) {
 	g := traverse(pass.TypesInfo.Defs)
 
-	nodes := g.Partition() // TODO (Issue#8): right now, this returns every single node in the graph
-	for _, n := range nodes {
-		pass.Reportf(n.Object.Pos(), "parition found - %+v", n)
+	edges := graph.Partition(g, 1.0)
+	for _, e := range edges {
+		pass.Reportf(e.Source.Object.Pos(), "parition found between -> %+v", e.Dest.Object.Pos())
 	}
 
 	return nil, nil
