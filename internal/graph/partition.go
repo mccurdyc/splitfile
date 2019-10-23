@@ -47,7 +47,7 @@ func Partition(g Graph, epsilon float64) []WeightedEdge {
 	}
 
 	dists := calculateDistances(g, edges)
-	return identifyPartitions(g, dists, epsilon)
+	return identifyPartitions(dists, epsilon)
 }
 
 // calculateDistances calculates the strongest strong distance of an edge from
@@ -87,8 +87,14 @@ func calculateDistances(g Graph, edges []WeightedEdge) []WeightedEdge {
 
 // identifyPartitions identifies the edges where the distance is greater than the
 // configured epsilon value. These edges will be split/"broken".
-func identifyPartitions(g Graph, edges []WeightedEdge, epsilon float64) []WeightedEdge {
+func identifyPartitions(edges []WeightedEdge, epsilon float64) []WeightedEdge {
 	res := make([]WeightedEdge, 0, len(edges))
+
+	for _, e := range edges {
+		if e.Distance > epsilon {
+			res = append(res, e)
+		}
+	}
 
 	return res
 }
