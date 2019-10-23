@@ -2,6 +2,7 @@ package graph
 
 import (
 	"errors"
+	"fmt"
 	"go/types"
 )
 
@@ -20,13 +21,22 @@ type Node struct {
 	Edges  map[string]WeightedEdge
 }
 
-// NewNode creates a pointer to a new Node with ID, id, and initializes a map of Edges.
-func NewNode(id string, obj types.Object) *Node {
+// NewNode creates a pointer to a new Node and initializes a map of Edges.
+func NewNode(obj types.Object) *Node {
 	return &Node{
-		ID:     id,
+		ID:     Id(obj),
 		Object: obj,
 		Edges:  make(map[string]WeightedEdge),
 	}
+}
+
+// Id always returns the fully-qualified (including package) name of an object.
+func Id(obj types.Object) string {
+	if !obj.Exported() {
+		return obj.Id() // object name if exported, qualified name if not exported
+	}
+
+	return fmt.Sprintf("%q/%q", obj.Pkg(), obj.Id())
 }
 
 // AddEdges adds weighted edges to a source node that signify relationships with other nodes.
