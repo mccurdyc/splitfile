@@ -31,6 +31,13 @@ func TestNew(t *testing.T) {
 }
 
 var (
+	parentEdge = map[string]WeightedEdge{
+		"parent": WeightedEdge{
+			Weight: 1.0,
+			Dest:   &Node{ID: "parent", Edges: make(map[string]WeightedEdge)},
+		},
+	}
+
 	edgeB = map[string]WeightedEdge{
 		"b": WeightedEdge{
 			Weight: 1.0,
@@ -38,8 +45,9 @@ var (
 		},
 	}
 
-	nodeAWithSingleEdgeB = Node{ID: "a", Edges: edgeB}
-	nodeCWithSingleEdgeB = Node{ID: "c", Edges: edgeB}
+	nodeAWithSingleEdgeB    = Node{ID: "a", Edges: edgeB}
+	nodeCWithSingleEdgeB    = Node{ID: "c", Edges: edgeB}
+	nodeCWithEdgeBAndParent = Node{ID: "c", Edges: edgeB, Parents: parentEdge}
 )
 
 func TestAddNode(t *testing.T) {
@@ -149,6 +157,38 @@ func TestContainsNode(t *testing.T) {
 
 			if got != test.want {
 				t.Errorf("(%+v) ContainsNode(%v) = %v mismatch \n%v", test.graph, test.id, got, test.want)
+			}
+		})
+	}
+}
+
+func TestFindRoots(t *testing.T) {
+	tests := []struct {
+		name  string
+		graph Graph
+		want  []*Node
+	}{
+		{
+			name:  "empty-graph",
+			graph: Graph(make(map[string]*Node)),
+			want:  []*Node{},
+		},
+
+		{
+			name: "one-root-node",
+			graph: Graph(map[string]*Node{
+				"c": &nodeCWithEdgeBAndParent,
+			}),
+			want: []*Node{&Node{ID: "parent", Edges: make(map[string]WeightedEdge)}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := test.graph.FindRoots()
+
+			if diff := cmp.Diff(test.want, got); diff != "" {
+				t.Errorf("(%+v) FindRoots() mismatch (-want +got): \n%s", test.graph, diff)
 			}
 		})
 	}

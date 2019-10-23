@@ -5,6 +5,26 @@ import (
 	"testing"
 )
 
+var (
+	nodeA = Node{
+		ID:              "a",
+		Object:          nil,
+		Edges:           map[string]WeightedEdge{},
+		Parents:         map[string]WeightedEdge{},
+		MinPathStrength: 1.0,
+		ShortestPathLen: 1.0,
+	}
+
+	nodeB = Node{
+		ID:              "b",
+		Object:          nil,
+		Edges:           map[string]WeightedEdge{},
+		Parents:         map[string]WeightedEdge{},
+		MinPathStrength: 1.0,
+		ShortestPathLen: 1.0,
+	}
+)
+
 func TestAddEdge(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -15,21 +35,31 @@ func TestAddEdge(t *testing.T) {
 	}{
 		{
 			name:   "add-edge-w1.0-to-empty-slice-should-return-edges-with-single-value",
-			node:   &Node{"a", nil, map[string]WeightedEdge{}},
-			dest:   &Node{"b", nil, map[string]WeightedEdge{}},
+			node:   &nodeA,
+			dest:   &nodeB,
 			weight: 1.0,
-			want: Node{"a", nil, map[string]WeightedEdge{"b": WeightedEdge{
-				Weight: 1.0,
-				Dest:   &Node{ID: "b", Object: nil, Edges: map[string]WeightedEdge{}},
-			}}},
+			want: Node{
+				ID:     "a",
+				Object: nil,
+				Edges: map[string]WeightedEdge{
+					"b": WeightedEdge{
+						Weight: 1.0,
+						Source: &nodeA,
+						Dest:   &nodeB,
+					},
+				},
+				Parents:         map[string]WeightedEdge{},
+				MinPathStrength: 1.0,
+				ShortestPathLen: 1.0,
+			},
 		},
 
 		{
 			name:   "add-edge-to-same-node-does-nothing",
-			node:   &Node{"a", nil, map[string]WeightedEdge{}},
-			dest:   &Node{"a", nil, map[string]WeightedEdge{}},
+			node:   &nodeA,
+			dest:   &nodeA,
 			weight: 1.0,
-			want:   Node{"a", nil, map[string]WeightedEdge{}},
+			want:   nodeA,
 		},
 	}
 
