@@ -21,7 +21,7 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (interface{}, error) {
 	g := traverse(pass.TypesInfo.Defs)
 
-	edges := graph.Partition(g, 1.0)
+	edges := graph.Partition(g, 0.1) // TODO: make this epsilon value configurable (or at least find a reasonable default i.e., the "natural" value)
 	for _, e := range edges {
 		pass.Reportf(e.Source.Object.Pos(), "parition found between -> %+v", e.Dest.Object.Pos())
 	}
