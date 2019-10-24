@@ -1,8 +1,9 @@
 package splitfile
 
 import (
+	"errors"
 	"go/ast"
-
+	"go/token"
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
@@ -18,12 +19,21 @@ var Analyzer = &analysis.Analyzer{
 	Run:      run,
 }
 
+type Poser interface {
+	Pos() token.Pos
+}
+
 func run(pass *analysis.Pass) (interface{}, error) {
 	g := traverse(pass.TypesInfo.Defs)
 
 	nodes := g.Partition() // TODO (Issue#8): right now, this returns every single node in the graph
 	for _, n := range nodes {
-		pass.Reportf(n.Object.Pos(), "parition found - %+v", n)
+		p, ok := n.Object.(Poser)
+		if !ok {
+			continue
+		}
+
+		pass.Reportf(p.Pos(), "parition found - %+v", n)
 	}
 
 	return nil, nil
@@ -40,7 +50,7 @@ func traverse(defs map[*ast.Ident]types.Object) graph.Graph {
 			continue
 		}
 
-		node := graph.NewNode(def.Type().String(), def.(types.Object))
+		node := graph.NewNode(def)
 		err := g.AddNode(node)
 		if err != nil {
 			continue
@@ -64,13 +74,21 @@ func filter(def types.Object) bool {
 	return false
 }
 
+type Typer interface {
+	Type() types.Type
+}
+
 // addRelated given a graph, g, and root node finds relationships
 // with other declarations in the same package and adds them to the graph.
 //
 // TODO (Issue #15): read value from config or use default
 // TODO: check other places for related (e.g., funcs, interfaces, etc.)
 func addRelated(g graph.Graph, node *graph.Node) error {
-	m := checkMethods(types.NewMethodSet(node.Object.Type()))
+	t, ok := node.Object.(Typer)
+	if !ok {
+		return errors.New("node does not have a Type() method")
+	}
+	m := checkMethods(types.NewMethodSet(t.Type()))
 
 	for _, r := range m {
 		if r.ID == node.ID {
@@ -97,7 +115,7 @@ func checkMethods(mset *types.MethodSet) []*graph.Node {
 	for i := 0; i < mset.Len(); i++ {
 		method := mset.At(i)
 
-		m := graph.NewNode(method.String(), method.Obj())
+		m := graph.NewNode(method.Obj())
 		rel = append(rel, m) // methods themselves are always related
 
 		sig, ok := method.Type().(*types.Signature)
@@ -132,7 +150,7 @@ func checkVar(v *types.Var) *graph.Node {
 		return nil
 	}
 
-	return graph.NewNode(v.String(), v)
+	return graph.NewNode(v)
 }
 
 // checkTuple checks a tuple of variables for related nodes.
