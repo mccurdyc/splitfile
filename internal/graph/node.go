@@ -2,7 +2,6 @@ package graph
 
 import (
 	"errors"
-	"go/types"
 )
 
 // WeightedEdge contains pointers to source and destination Nodes as well as
@@ -16,15 +15,19 @@ type WeightedEdge struct {
 // Nodes.
 type Node struct {
 	ID     string
-	Object types.Object
+	Object Ider
 	Edges  map[string]WeightedEdge
 }
 
+type Ider interface {
+	Id() string
+}
+
 // NewNode creates a pointer to a new Node with ID, id, and initializes a map of Edges.
-func NewNode(id string, obj types.Object) *Node {
+func NewNode(ider Ider) *Node {
 	return &Node{
-		ID:     id,
-		Object: obj,
+		ID:     ider.Id(),
+		Object: ider,
 		Edges:  make(map[string]WeightedEdge),
 	}
 }
