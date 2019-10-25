@@ -1,8 +1,9 @@
 package splitfile
 
 import (
+	"errors"
 	"go/ast"
-
+	"go/token"
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
@@ -18,12 +19,26 @@ var Analyzer = &analysis.Analyzer{
 	Run:      run,
 }
 
+type Poser interface {
+	Pos() token.Pos
+}
+
 func run(pass *analysis.Pass) (interface{}, error) {
 	g := traverse(pass.TypesInfo.Defs)
 
 	edges := graph.Partition(g, 0.1) // TODO: make this epsilon value configurable (or at least find a reasonable default i.e., the "natural" value)
 	for _, e := range edges {
-		pass.Reportf(e.Source.Object.Pos(), "parition found between -> %+v", e.Dest.Object.Pos())
+		src, ok := e.Source.Object.(Poser)
+		if !ok {
+			continue
+		}
+
+		dest, ok := e.Dest.Object.(Poser)
+		if !ok {
+			continue
+		}
+
+		pass.Reportf(src.Pos(), "parition found between -> %+v", dest.Pos())
 	}
 
 	return nil, nil
@@ -40,7 +55,7 @@ func traverse(defs map[*ast.Ident]types.Object) graph.Graph {
 			continue
 		}
 
-		node := graph.NewNode(def.Type().String(), def.(types.Object))
+		node := graph.NewNode(Id(def), def)
 		err := g.AddNode(node)
 		if err != nil {
 			continue
@@ -64,13 +79,21 @@ func filter(def types.Object) bool {
 	return false
 }
 
+type Typer interface {
+	Type() types.Type
+}
+
 // addRelated given a graph, g, and root node finds relationships
 // with other declarations in the same package and adds them to the graph.
 //
 // TODO (Issue #15): read value from config or use default
 // TODO: check other places for related (e.g., funcs, interfaces, etc.)
 func addRelated(g graph.Graph, node *graph.Node) error {
-	m := checkMethods(types.NewMethodSet(node.Object.Type()))
+	t, ok := node.Object.(Typer)
+	if !ok {
+		return errors.New("node does not have a Type() method")
+	}
+	m := checkMethods(types.NewMethodSet(t.Type()))
 
 	for _, r := range m {
 		if r.ID == node.ID {
@@ -97,7 +120,7 @@ func checkMethods(mset *types.MethodSet) []*graph.Node {
 	for i := 0; i < mset.Len(); i++ {
 		method := mset.At(i)
 
-		m := graph.NewNode(method.String(), method.Obj())
+		m := graph.NewNode(Id(method.Obj()), method.Obj())
 		rel = append(rel, m) // methods themselves are always related
 
 		sig, ok := method.Type().(*types.Signature)
@@ -132,7 +155,7 @@ func checkVar(v *types.Var) *graph.Node {
 		return nil
 	}
 
-	return graph.NewNode(v.String(), v)
+	return graph.NewNode(Id(v), v)
 }
 
 // checkTuple checks a tuple of variables for related nodes.

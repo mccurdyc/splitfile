@@ -2,7 +2,6 @@ package graph
 
 import (
 	"errors"
-	"go/types"
 )
 
 const (
@@ -26,7 +25,7 @@ type WeightedEdge struct {
 // Nodes.
 type Node struct {
 	ID      string
-	Object  types.Object
+	Object  interface{}
 	Edges   map[string]WeightedEdge
 	Parents map[string]WeightedEdge // TODO: may be able to delete this now
 
@@ -35,10 +34,10 @@ type Node struct {
 }
 
 // NewNode creates a pointer to a new Node with ID, id, and initializes a map of Edges.
-func NewNode(id string, obj types.Object) *Node {
+func NewNode(id string, v interface{}) *Node {
 	return &Node{
 		ID:      id,
-		Object:  obj,
+		Object:  v,
 		Edges:   make(map[string]WeightedEdge),
 		Parents: make(map[string]WeightedEdge),
 	}
@@ -80,6 +79,10 @@ func (n *Node) Valid() (bool, error) {
 
 	if n.Edges == nil {
 		return false, errors.New("invalid node; edge map must be initialized")
+	}
+
+	if n.Parents == nil {
+		return false, errors.New("invalid node; parent map must be initialized")
 	}
 
 	return true, nil
