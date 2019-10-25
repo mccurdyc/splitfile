@@ -50,7 +50,7 @@ func traverse(defs map[*ast.Ident]types.Object) graph.Graph {
 			continue
 		}
 
-		node := graph.NewNode(def)
+		node := graph.NewNode(Id(def), def)
 		err := g.AddNode(node)
 		if err != nil {
 			continue
@@ -115,7 +115,7 @@ func checkMethods(mset *types.MethodSet) []*graph.Node {
 	for i := 0; i < mset.Len(); i++ {
 		method := mset.At(i)
 
-		m := graph.NewNode(method.Obj())
+		m := graph.NewNode(Id(method.Obj()), method.Obj())
 		rel = append(rel, m) // methods themselves are always related
 
 		sig, ok := method.Type().(*types.Signature)
@@ -150,7 +150,7 @@ func checkVar(v *types.Var) *graph.Node {
 		return nil
 	}
 
-	return graph.NewNode(v)
+	return graph.NewNode(Id(v), v)
 }
 
 // checkTuple checks a tuple of variables for related nodes.
