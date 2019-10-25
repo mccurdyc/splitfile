@@ -42,7 +42,7 @@ func TestId(t *testing.T) {
 
 			got := Id(o)
 			if got != tt.want {
-				t.Errorf("Id(): want %s, got %s", tt.want, got)
+				t.Errorf("Id(): want '%s', got '%s'", tt.want, got)
 			}
 		})
 	}

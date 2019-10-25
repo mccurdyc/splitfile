@@ -13,10 +13,9 @@ type Ider interface {
 }
 
 func Id(ider Ider) string {
-	var pkg string
 	if ider.Pkg() != nil {
-		pkg = ider.Pkg().String()
+		return fmt.Sprintf("%s %s %d", ider.Pkg().String(), ider.Name(), ider.Pos())
 	}
 
-	return fmt.Sprintf("%q %q %d", pkg, ider.Name(), ider.Pos())
+	return fmt.Sprintf("%s %d", ider.Name(), ider.Pos())
 }
