@@ -15,19 +15,15 @@ type WeightedEdge struct {
 // Nodes.
 type Node struct {
 	ID     string
-	Object Ider
+	Object interface{}
 	Edges  map[string]WeightedEdge
 }
 
-type Ider interface {
-	Id() string
-}
-
 // NewNode creates a pointer to a new Node with ID, id, and initializes a map of Edges.
-func NewNode(ider Ider) *Node {
+func NewNode(id string, v interface{}) *Node {
 	return &Node{
-		ID:     ider.Id(),
-		Object: ider,
+		ID:     id,
+		Object: v,
 		Edges:  make(map[string]WeightedEdge),
 	}
 }
