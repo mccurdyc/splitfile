@@ -2,20 +2,21 @@ package splitfile
 
 import (
 	"fmt"
-	"go/token"
 	"go/types"
 )
 
 type Ider interface {
 	Pkg() *types.Package
 	Name() string
-	Pos() token.Pos
+	Type() types.Type
 }
 
 func Id(ider Ider) string {
+	id := fmt.Sprintf("%s %s", ider.Name(), ider.Type().String())
+
 	if ider.Pkg() != nil {
-		return fmt.Sprintf("%s %s %d", ider.Pkg().String(), ider.Name(), ider.Pos())
+		id = fmt.Sprintf("%s %s", ider.Pkg().String(), id)
 	}
 
-	return fmt.Sprintf("%s %d", ider.Name(), ider.Pos())
+	return id
 }
