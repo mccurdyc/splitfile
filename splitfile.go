@@ -141,8 +141,7 @@ func checkMethods(mset *types.MethodSet) []*graph.Node {
 	return rel
 }
 
-// checkSignature checks a function signature, the receiver (if it is a method this
-// will be a non-nil value), the parameters and the return types.
+// checkSignature checks a function signature. Specifically, the parameters and the return types.
 func checkSignature(sig *types.Signature) []*graph.Node {
 	rel := make([]*graph.Node, 0)
 
