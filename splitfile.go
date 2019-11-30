@@ -50,18 +50,24 @@ func traverse(defs map[*ast.Ident]types.Object) graph.Graph {
 	g := graph.New()
 
 	for _, def := range defs {
-
 		if skip := filter(def); skip {
 			continue
 		}
 
-		node := graph.NewNode(Id(def), def)
-		err := g.AddNode(node)
-		if err != nil {
-			continue
+		// if the graph already contains a node with the same ID, no need to create
+		// another node with the same ID. This is because multiple variables in the
+		// same package could use the same name and have the same type. We don't want
+		// to skip entirely because this is a new instance of that variable and should
+		// be checked for new related nodes.
+		if !g.ContainsNode(Id(def)) {
+			node := graph.NewNode(Id(def), def)
+			err := g.AddNode(node)
+			if err != nil {
+				continue
+			}
 		}
 
-		err = addRelated(g, node)
+		err := addRelated(g, g[Id(def)])
 		if err != nil {
 			continue
 		}
@@ -140,9 +146,6 @@ func checkMethods(mset *types.MethodSet) []*graph.Node {
 func checkSignature(sig *types.Signature) []*graph.Node {
 	rel := make([]*graph.Node, 0)
 
-	if v := checkVar(sig.Recv()); v != nil {
-		rel = append(rel, v)
-	}
 	rel = append(rel, checkTuple(sig.Params())...)
 	rel = append(rel, checkTuple(sig.Results())...)
 
