@@ -53,11 +53,13 @@ func (n *Node) AddEdge(dest *Node, w float64) {
 
 	n.Edges[dest.ID] = WeightedEdge{
 		Weight: w,
+		Source: n,
 		Dest:   dest,
 	}
 
 	dest.Parents[n.ID] = WeightedEdge{
 		Weight: w,
+		Source: dest,
 		Dest:   n,
 	}
 }

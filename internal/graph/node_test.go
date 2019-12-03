@@ -68,7 +68,7 @@ func TestAddEdge(t *testing.T) {
 			tt.node.AddEdge(tt.dest, tt.weight)
 
 			if ok := reflect.DeepEqual(*tt.node, tt.want); !ok {
-				t.Errorf("(%+v) AddEdge(%+v, %f) - mismatch \n%+v", tt.node, tt.dest, tt.weight, tt.want)
+				t.Errorf("AddEdge() - mismatch \n\twant: %+v\n\tgot:%+v", tt.want, *tt.node)
 			}
 		})
 	}
