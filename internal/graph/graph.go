@@ -29,8 +29,10 @@ func (g Graph) ContainsNode(id string) bool {
 	return ok
 }
 
-// FindRoots finds the many possible roots in the graph.
-func (g Graph) FindRoots() []*Node {
+// Roots finds the many possible roots in the graph.
+// The order of the graph traversal matters because if a parent is added _after_
+// a child, then that child node won't have the identified parent node.
+func (g Graph) Roots() []*Node {
 	roots := make([]*Node, 0, len(g))
 
 	for _, node := range g {
@@ -40,4 +42,17 @@ func (g Graph) FindRoots() []*Node {
 	}
 
 	return roots
+}
+
+// Edges returns all of the edges in the graph.
+func (g Graph) Edges() []WeightedEdge {
+	edges := make([]WeightedEdge, 0)
+
+	for _, node := range g {
+		for _, edge := range node.Edges {
+			edges = append(edges, edge)
+		}
+	}
+
+	return edges
 }
