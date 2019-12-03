@@ -1,6 +1,8 @@
 package graph
 
-import "container/list"
+import (
+	"container/list"
+)
 
 func shouldPartition(g Graph) bool {
 	if len(g) <= 1 {
@@ -23,14 +25,8 @@ func shouldPartition(g Graph) bool {
 // 4. calculate edge distances
 // 5. identify edges where the sum of cross-iteration distances > epsilon
 func Partition(g Graph, epsilon float64) []WeightedEdge {
-	roots := g.FindRoots()
-
-	edges := make([]WeightedEdge, 0)
-	for _, node := range g {
-		for _, edge := range node.Edges {
-			edges = append(edges, edge)
-		}
-	}
+	roots := g.Roots()
+	edges := g.Edges()
 
 	for _, root := range roots {
 		visited := make(map[string]bool)
