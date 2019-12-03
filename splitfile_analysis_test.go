@@ -17,10 +17,10 @@ import (
 // rather deep directory hierarchy, and obscure similarities among
 // related tests, especially when tests involve multiple packages, or
 // multiple variants of a single scenario.
-// func TestFromFileSystem(t *testing.T) {
-// 	testdata := analysistest.TestData()
-// 	analysistest.Run(t, testdata, splitfile.Analyzer, "abc")
-// }
+func TestFromFileSystem(t *testing.T) {
+	testdata := analysistest.TestData()
+	analysistest.Run(t, testdata, splitfile.Analyzer, "abc")
+}
 
 // TestFromStringLiterals demonstrates how to test an analysis using
 // a table of string literals for each test case.
