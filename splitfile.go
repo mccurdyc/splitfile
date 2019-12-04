@@ -2,6 +2,7 @@ package splitfile
 
 import (
 	"errors"
+	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -103,26 +104,28 @@ func addRelated(g graph.Graph, node *graph.Node) error {
 	m := checkMethods(types.NewMethodSet(t.Type()))
 
 	// it is important to add receivers first
-	for _, r := range m.receivers {
-		if !g.ContainsNode(r.ID) {
-			err := g.AddNode(r)
+	for _, v := range m {
+		if !g.ContainsNode(v.method.ID) {
+			err := g.AddNode(v.method)
 			if err != nil {
+				fmt.Println("error adding method")
 				continue
 			}
 		}
 
-		node.AddEdge(r, 5.0) // TODO (Issue #15): read value from config or use default
-	}
+		node.AddEdge(g[v.method.ID], 5.0) // TODO (Issue #15): read value from config or use default
 
-	for _, r := range m.other {
-		if !g.ContainsNode(r.ID) {
-			err := g.AddNode(r)
-			if err != nil {
-				continue
+		for _, r := range v.other {
+			if !g.ContainsNode(r.ID) {
+				err := g.AddNode(r)
+				if err != nil {
+					fmt.Println("error adding other")
+					continue
+				}
 			}
-		}
 
-		node.AddEdge(r, 2.0) // TODO (Issue #15): read value from config or use default
+			v.method.AddEdge(r, 2.0) // params, results, etc should be on the method node, not the receiver node
+		}
 	}
 
 	// TODO: check other places for related (e.g., funcs, interfaces, etc.)
@@ -130,17 +133,16 @@ func addRelated(g graph.Graph, node *graph.Node) error {
 	return nil
 }
 
-type methodSetResult struct {
+type methodSetResult map[string]methodResult
+type methodResult struct {
+	method    *graph.Node
 	receivers []*graph.Node
 	other     []*graph.Node
 }
 
 // checkMethods checks methods' signatures for related types.
-func checkMethods(g graph.Graph, mset *types.MethodSet) methodSetResult {
-	res := methodSetResult{
-		receivers: make([]*graph.Node, 0),
-		other:     make([]*graph.Node, 0),
-	}
+func checkMethods(mset *types.MethodSet) methodSetResult {
+	res := make(methodSetResult)
 
 	for i := 0; i < mset.Len(); i++ {
 		method := mset.At(i)
@@ -151,19 +153,25 @@ func checkMethods(g graph.Graph, mset *types.MethodSet) methodSetResult {
 		}
 
 		m := graph.NewNode(Id(method.Obj()), method.Obj())
-		res.other = append(res.other, m) // methods themselves are always related
+		v := methodResult{
+			method:    m,
+			receivers: make([]*graph.Node, 0),
+			other:     make([]*graph.Node, 0),
+		}
 
 		sigRes := checkSignature(sig)
-		res.receivers = append(res.receivers, sigRes.receivers...)
-		res.other = append(res.other, sigRes.other...)
+		v.receivers = append(v.receivers, sigRes.receivers...)
+		v.other = append(v.other, sigRes.other...)
+
+		res[m.ID] = v
 	}
 
 	return res
 }
 
 // checkSignature checks a function signature. Specifically, the parameters and the return types.
-func checkSignature(sig *types.Signature) methodSetResult {
-	res := methodSetResult{
+func checkSignature(sig *types.Signature) methodResult {
+	res := methodResult{
 		receivers: make([]*graph.Node, 0),
 		other:     make([]*graph.Node, 0),
 	}
