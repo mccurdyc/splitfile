@@ -2,7 +2,6 @@ package splitfile
 
 import (
 	"errors"
-	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -108,7 +107,6 @@ func addRelated(g graph.Graph, node *graph.Node) error {
 		if !g.ContainsNode(v.method.ID) {
 			err := g.AddNode(v.method)
 			if err != nil {
-				fmt.Println("error adding method")
 				continue
 			}
 		}
@@ -119,12 +117,11 @@ func addRelated(g graph.Graph, node *graph.Node) error {
 			if !g.ContainsNode(r.ID) {
 				err := g.AddNode(r)
 				if err != nil {
-					fmt.Println("error adding other")
 					continue
 				}
 			}
 
-			v.method.AddEdge(r, 2.0) // params, results, etc should be on the method node, not the receiver node
+			g[v.method.ID].AddEdge(r, 2.0) // params, results, etc should be on the method node, not the receiver node
 		}
 	}
 
