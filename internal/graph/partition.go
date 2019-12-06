@@ -29,6 +29,10 @@ func Partition(g Graph, epsilon float64) []WeightedEdge {
 	edges := g.Edges()
 
 	for _, root := range roots {
+		if len(root.Edges) == 0 {
+			continue
+		}
+
 		visited := make(map[string]bool)
 		recursiveBFS(root, visited)
 
@@ -133,7 +137,7 @@ func recursiveBFS(node *Node, visited map[string]bool) {
 
 	for queue.Len() > 0 {
 		n := queue.Front()
-		e, ok := n.Value.(*Node)
+		e, ok := queue.Remove(n).(*Node)
 		if !ok {
 			continue
 		}
