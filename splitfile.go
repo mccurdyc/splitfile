@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"log"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -33,12 +34,12 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			continue
 		}
 
-		dest, ok := e.Dest.Object.(Poser)
-		if !ok {
-			continue
-		}
+		log.Printf("\n\tsrc: %+v \n\tdest: %+v\n", e.Source, e.Dest)
 
-		pass.Reportf(src.Pos(), "parition found between -> %+v", dest.Pos())
+		pass.Report(analysis.Diagnostic{
+			Pos:     src.Pos(),
+			Message: "potential partition identified",
+		})
 	}
 
 	return nil, nil
