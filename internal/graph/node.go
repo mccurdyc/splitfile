@@ -4,9 +4,7 @@ import (
 	"errors"
 )
 
-const (
-	defaultConnectednessValue = -1 // default to an invalid, "infinity", value.
-)
+const defaultWeight = -1
 
 // WeightedEdge contains pointers to source and destination Nodes as well as
 // the assigned weight of the relationship.
@@ -36,10 +34,12 @@ type Node struct {
 // NewNode creates a pointer to a new Node with ID, id, and initializes a map of Edges.
 func NewNode(id string, v interface{}) *Node {
 	return &Node{
-		ID:      id,
-		Object:  v,
-		Edges:   make(map[string]WeightedEdge),
-		Parents: make(map[string]WeightedEdge),
+		ID:              id,
+		Object:          v,
+		Edges:           make(map[string]WeightedEdge),
+		Parents:         make(map[string]WeightedEdge),
+		MinPathStrength: defaultWeight,
+		ShortestPathLen: defaultWeight,
 	}
 }
 
