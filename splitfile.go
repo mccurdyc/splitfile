@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"log"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -33,8 +32,6 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		if !ok {
 			continue
 		}
-
-		log.Printf("\n\tsrc: %+v \n\tdest: %+v\n", e.Source, e.Dest)
 
 		pass.Report(analysis.Diagnostic{
 			Pos:     src.Pos(),
@@ -112,7 +109,8 @@ func addRelated(g graph.Graph, node *graph.Node) error {
 			}
 		}
 
-		node.AddEdge(g[v.method.ID], 5.0) // TODO (Issue #15): read value from config or use default
+		// Lower weight is better. It indicates "closeness"
+		node.AddEdge(g[v.method.ID], 2.0) // TODO (Issue #15): read value from config or use default
 
 		for _, r := range v.other {
 			if !g.ContainsNode(r.ID) {
@@ -122,7 +120,7 @@ func addRelated(g graph.Graph, node *graph.Node) error {
 				}
 			}
 
-			g[v.method.ID].AddEdge(r, 2.0) // params, results, etc should be on the method node, not the receiver node
+			g[v.method.ID].AddEdge(r, 5.0) // params, results, etc should be on the method node, not the receiver node
 		}
 	}
 
