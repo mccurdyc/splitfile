@@ -2,6 +2,7 @@ package graph
 
 import (
 	"container/list"
+	"log"
 )
 
 func shouldPartition(g Graph) bool {
@@ -42,7 +43,9 @@ func Partition(g Graph, epsilon float64) []WeightedEdge {
 			if edge.Source == root {
 				continue
 			}
-			edge.MinPathStrengths = append(edge.MinPathStrengths, edge.Source.MinPathStrength)
+
+			mps := g[edge.Source.ID].Edges[edge.Dest.ID].MinPathStrengths
+			mps = append(mps, edge.Source.MinPathStrength)
 		}
 	}
 
@@ -78,6 +81,10 @@ func calculateDistances(g Graph, edges []WeightedEdge) []WeightedEdge {
 			sum += mps
 		}
 
+		if sum == 0.0 {
+			continue
+		}
+
 		edge.Distance = 1 / (sum)
 		res = append(res, edge)
 	}
@@ -92,6 +99,7 @@ func identifyPartitions(edges []WeightedEdge, epsilon float64) []WeightedEdge {
 
 	for _, e := range edges {
 		if e.Distance > epsilon {
+			log.Printf("identified partition with distance: %+v\n\tsrc: %+v \n\tdest: %+v\n", e.Distance, e.Source, e.Dest)
 			res = append(res, e)
 		}
 	}
@@ -114,8 +122,10 @@ func recursiveBFS(node *Node, visited map[string]bool) {
 				updateChildren = true
 			}
 
+			// Did the parent node see an edge with a lower weight than the edge weight
+			// between the child and parent node? If so, use the parent's min.
 			if node.MinPathStrength < edge.Dest.MinPathStrength {
-				edge.Dest.MinPathStrength = node.ShortestPathLen
+				edge.Dest.MinPathStrength = node.MinPathStrength
 				updateChildren = true
 			}
 
@@ -136,15 +146,24 @@ func recursiveBFS(node *Node, visited map[string]bool) {
 	}
 
 	for queue.Len() > 0 {
-		n := queue.Front()
-		e, ok := queue.Remove(n).(*Node)
+		d, ok := queue.Remove(queue.Front()).(*Node)
 		if !ok {
 			continue
 		}
 
-		e.ShortestPathLen = node.ShortestPathLen + node.Edges[e.ID].Weight
-		e.MinPathStrength = node.Edges[e.ID].Weight
+		d.ShortestPathLen = node.Edges[d.ID].Weight
+		d.MinPathStrength = node.Edges[d.ID].Weight
 
-		recursiveBFS(e, visited)
+		if node.ShortestPathLen != defaultWeight {
+			d.ShortestPathLen += node.ShortestPathLen
+		}
+
+		if node.MinPathStrength != defaultWeight {
+			if node.MinPathStrength < d.MinPathStrength {
+				d.MinPathStrength = node.MinPathStrength
+			}
+		}
+
+		recursiveBFS(d, visited)
 	}
 }
