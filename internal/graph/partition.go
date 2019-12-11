@@ -26,27 +26,22 @@ func shouldPartition(g Graph) bool {
 // 4. calculate edge distances
 // 5. identify edges where the sum of cross-iteration distances > epsilon
 func Partition(g Graph, epsilon float64) []WeightedEdge {
-	roots := g.Roots()
-	edges := g.Edges()
+	roots := make(map[string]*Node)
+	for _, r := range g.Roots() {
+		roots[r.ID] = r
+	}
 
-	for _, root := range roots {
-		if len(root.Edges) == 0 {
+	visited := make(map[string]bool)
+	recursiveBFS(roots, visited)
+
+	edges := g.Edges()
+	for _, edge := range edges {
+		if edge.Source.MinPathStrength == defaultWeight {
 			continue
 		}
 
-		visited := make(map[string]bool)
-		recursiveBFS(root, visited)
-
-		for _, edge := range edges {
-			// skip if the node is the root because we don't want to add '0' to the slice of
-			// seen min paths. This could lead to division by zero.
-			if edge.Source == root || edge.Source.MinPathStrength == defaultWeight {
-				continue
-			}
-
-			mps := g[edge.Source.ID].Edges[edge.Dest.ID].MinPathStrengths
-			mps = append(mps, edge.Source.MinPathStrength)
-		}
+		mps := g[edge.Source.ID].Edges[edge.Dest.ID].MinPathStrengths
+		mps = append(mps, edge.Source.MinPathStrength)
 	}
 
 	dists := calculateDistances(g, edges)
@@ -109,61 +104,69 @@ func identifyPartitions(edges []WeightedEdge, epsilon float64) []WeightedEdge {
 
 // recursiveBFS does recursive breadth-first search of the graph, keeping track
 // of shortest path and the mininimum path strength (i.e., the weaked edge in a path).
-func recursiveBFS(node *Node, visited map[string]bool) {
-	queue := list.New()
-	visited[node.ID] = true
+func recursiveBFS(level map[string]*Node, visited map[string]bool) {
+	evalQueue := list.New()
+	nextLevel := make(map[string]*Node)
 
-	for _, edge := range node.Edges {
-		if _, ok := visited[edge.Dest.ID]; ok {
-			var updateChildren bool
-
-			if edge.Weight < edge.Dest.MinPathStrength {
-				edge.Dest.MinPathStrength = edge.Weight
-				updateChildren = true
-			}
-
-			// Did the parent node see an edge with a lower weight than the edge weight
-			// between the child and parent node? If so, use the parent's min.
-			if node.MinPathStrength < edge.Dest.MinPathStrength {
-				edge.Dest.MinPathStrength = node.MinPathStrength
-				updateChildren = true
-			}
-
-			pLen := node.ShortestPathLen + edge.Weight
-			if pLen < edge.Dest.ShortestPathLen {
-				edge.Dest.ShortestPathLen = pLen
-				updateChildren = true
-			}
-
-			if updateChildren {
-				queue.PushBack(edge.Dest)
-			}
-
+	for _, node := range level {
+		if _, ok := visited[node.ID]; !ok {
+			evalQueue.PushBack(node)
 			continue
 		}
 
-		queue.PushBack(edge.Dest)
+		var reevaluate bool
+		for _, parentEdge := range node.Parents {
+			if parentEdge.Weight < node.MinPathStrength {
+				node.MinPathStrength = parentEdge.Weight
+				reevaluate = true
+			}
+
+			parent := parentEdge.Source
+
+			if parent.MinPathStrength < node.MinPathStrength {
+				node.MinPathStrength = parent.MinPathStrength
+				reevaluate = true
+			}
+
+			pathLen := parent.ShortestPathLen + parentEdge.Weight
+			if pathLen < node.ShortestPathLen {
+				node.ShortestPathLen = pathLen
+				reevaluate = true
+			}
+
+			if reevaluate {
+				evalQueue.PushBack(node)
+			}
+		}
 	}
 
-	for queue.Len() > 0 {
-		d, ok := queue.Remove(queue.Front()).(*Node)
+	for evalQueue.Len() > 0 {
+		n, ok := evalQueue.Remove(evalQueue.Front()).(*Node)
 		if !ok {
 			continue
 		}
 
-		d.ShortestPathLen = node.Edges[d.ID].Weight
-		d.MinPathStrength = node.Edges[d.ID].Weight
-
-		if node.ShortestPathLen != defaultWeight {
-			d.ShortestPathLen += node.ShortestPathLen
+		for _, childEdge := range n.Edges {
+			nextLevel[childEdge.Dest.ID] = childEdge.Dest
 		}
 
-		if node.MinPathStrength != defaultWeight {
-			if node.MinPathStrength < d.MinPathStrength {
-				d.MinPathStrength = node.MinPathStrength
+		for _, parentEdge := range n.Parents {
+			if n.MinPathStrength == defaultWeight || parentEdge.Weight < n.MinPathStrength {
+				n.MinPathStrength = parentEdge.Weight
+			}
+
+			parent := parentEdge.Source
+			if parent.MinPathStrength < n.MinPathStrength {
+				n.MinPathStrength = parent.MinPathStrength
+			}
+
+			pathLen := parent.ShortestPathLen + parentEdge.Weight
+			if n.ShortestPathLen == defaultWeight || pathLen < n.ShortestPathLen {
+				n.ShortestPathLen = pathLen
 			}
 		}
 
-		recursiveBFS(d, visited)
+		visited[n.ID] = true
+		recursiveBFS(nextLevel, visited)
 	}
 }
