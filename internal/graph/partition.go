@@ -40,7 +40,7 @@ func Partition(g Graph, epsilon float64) []WeightedEdge {
 		for _, edge := range edges {
 			// skip if the node is the root because we don't want to add '0' to the slice of
 			// seen min paths. This could lead to division by zero.
-			if edge.Source == root {
+			if edge.Source == root || edge.Source.MinPathStrength == defaultWeight {
 				continue
 			}
 
