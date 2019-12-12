@@ -120,7 +120,7 @@ func addRelated(g graph.Graph, node *graph.Node) error {
 				}
 			}
 
-			g[v.method.ID].AddEdge(r, 5.0) // params, results, etc should be on the method node, not the receiver node
+			g[v.method.ID].AddEdge(g[r.ID], 5.0) // params, results, etc should be on the method node, not the receiver node
 		}
 	}
 
