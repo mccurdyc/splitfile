@@ -19,10 +19,9 @@ func shouldPartition(g Graph) bool {
 // Partition returns a slice of WeightedEdges that should be partitioned (i.e., "broken").
 // The pseudo-algorithm for Partition is as follows:
 // 1. find root nodes
-// 2. find all edges in the graph
-// 3. for each root
-// 		a. recursively traverse the graph to identify the min shortest path to get to a node
-// 		b. for each edge in the graph, store the min shortest path to a node from the root under observation
+// 2. recursively traverse the graph
+// 		a. keeping track of the current shortest path to a node
+//    b. keeping track of all observed shortest paths to a node
 // 4. calculate edge distances
 // 5. identify edges where the sum of cross-iteration distances > epsilon
 func Partition(g Graph, epsilon float64) []WeightedEdge {
@@ -34,18 +33,50 @@ func Partition(g Graph, epsilon float64) []WeightedEdge {
 	visited := make(map[string]bool)
 	recursiveBFS(roots, visited)
 
-	edges := g.Edges()
-	for _, edge := range edges {
-		if edge.Source.MinPathStrength == defaultWeight {
+	dists := calculateDistances(g, g.Edges())
+	return identifyPartitions(dists, epsilon)
+}
+
+// recursiveBFS does recursive breadth-first search of the graph, keeping track
+// of shortest path and the mininimum path strength (i.e., the weakest edge in a path).
+func recursiveBFS(level map[string]*Node, visited map[string]bool) {
+	evalQueue := list.New()
+	nextLevel := make(map[string]*Node)
+
+	for _, node := range level {
+		if _, ok := visited[node.ID]; !ok {
+			evalQueue.PushBack(node)
+		}
+	}
+
+	for evalQueue.Len() > 0 {
+		n, ok := evalQueue.Remove(evalQueue.Front()).(*Node)
+		if !ok {
 			continue
 		}
 
-		mps := g[edge.Source.ID].Edges[edge.Dest.ID].MinPathStrengths
-		mps = append(mps, edge.Source.MinPathStrength)
+		for _, childEdge := range n.Edges {
+			nextLevel[childEdge.Dest.ID] = childEdge.Dest
+
+			p := shortestPath(childEdge)
+			if p < childEdge.Dest.ShortestPath {
+				childEdge.Dest.ShortestPath = p
+			}
+
+			childEdge.Source.ShortestPaths = append(childEdge.Dest.ShortestPaths, p)
+		}
+
+		visited[n.ID] = true
+		recursiveBFS(nextLevel, visited)
+	}
+}
+
+func shortestPath(edge WeightedEdge) float64 {
+	if edge.Source == nil || edge.Source.ShortestPath == defaultWeight {
+		return edge.Weight
 	}
 
-	dists := calculateDistances(g, edges)
-	return identifyPartitions(dists, epsilon)
+	return edge.Source.ShortestPath + edge.Weight
 }
 
 // calculateDistances calculates the strongest strong distance of an edge from
@@ -72,8 +103,8 @@ func calculateDistances(g Graph, edges []WeightedEdge) []WeightedEdge {
 	for _, edge := range edges {
 
 		var sum float64
-		for _, mps := range edge.MinPathStrengths {
-			sum += mps
+		for _, sp := range edge.Dest.ShortestPaths {
+			sum += sp
 		}
 
 		if sum == 0.0 {
@@ -100,73 +131,4 @@ func identifyPartitions(edges []WeightedEdge, epsilon float64) []WeightedEdge {
 	}
 
 	return res
-}
-
-// recursiveBFS does recursive breadth-first search of the graph, keeping track
-// of shortest path and the mininimum path strength (i.e., the weaked edge in a path).
-func recursiveBFS(level map[string]*Node, visited map[string]bool) {
-	evalQueue := list.New()
-	nextLevel := make(map[string]*Node)
-
-	for _, node := range level {
-		if _, ok := visited[node.ID]; !ok {
-			evalQueue.PushBack(node)
-			continue
-		}
-
-		var reevaluate bool
-		for _, parentEdge := range node.Parents {
-			if parentEdge.Weight < node.MinPathStrength {
-				node.MinPathStrength = parentEdge.Weight
-				reevaluate = true
-			}
-
-			parent := parentEdge.Source
-
-			if parent.MinPathStrength < node.MinPathStrength {
-				node.MinPathStrength = parent.MinPathStrength
-				reevaluate = true
-			}
-
-			pathLen := parent.ShortestPathLen + parentEdge.Weight
-			if pathLen < node.ShortestPathLen {
-				node.ShortestPathLen = pathLen
-				reevaluate = true
-			}
-
-			if reevaluate {
-				evalQueue.PushBack(node)
-			}
-		}
-	}
-
-	for evalQueue.Len() > 0 {
-		n, ok := evalQueue.Remove(evalQueue.Front()).(*Node)
-		if !ok {
-			continue
-		}
-
-		for _, childEdge := range n.Edges {
-			nextLevel[childEdge.Dest.ID] = childEdge.Dest
-		}
-
-		for _, parentEdge := range n.Parents {
-			if n.MinPathStrength == defaultWeight || parentEdge.Weight < n.MinPathStrength {
-				n.MinPathStrength = parentEdge.Weight
-			}
-
-			parent := parentEdge.Source
-			if parent.MinPathStrength < n.MinPathStrength {
-				n.MinPathStrength = parent.MinPathStrength
-			}
-
-			pathLen := parent.ShortestPathLen + parentEdge.Weight
-			if n.ShortestPathLen == defaultWeight || pathLen < n.ShortestPathLen {
-				n.ShortestPathLen = pathLen
-			}
-		}
-
-		visited[n.ID] = true
-		recursiveBFS(nextLevel, visited)
-	}
 }
