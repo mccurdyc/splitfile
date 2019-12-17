@@ -7,21 +7,21 @@ import (
 
 var (
 	nodeA = Node{
-		ID:              "a",
-		Object:          nil,
-		Edges:           map[string]WeightedEdge{},
-		Parents:         map[string]WeightedEdge{},
-		MinPathStrength: 1.0,
-		ShortestPathLen: 1.0,
+		ID:            "a",
+		Object:        nil,
+		Edges:         map[string]WeightedEdge{},
+		Parents:       map[string]WeightedEdge{},
+		ShortestPath:  1.0,
+		ShortestPaths: []float64{1.0},
 	}
 
 	nodeB = Node{
-		ID:              "b",
-		Object:          nil,
-		Edges:           map[string]WeightedEdge{},
-		Parents:         map[string]WeightedEdge{},
-		MinPathStrength: 1.0,
-		ShortestPathLen: 1.0,
+		ID:            "b",
+		Object:        nil,
+		Edges:         map[string]WeightedEdge{},
+		Parents:       map[string]WeightedEdge{},
+		ShortestPath:  1.0,
+		ShortestPaths: []float64{1.0},
 	}
 )
 
@@ -48,9 +48,9 @@ func TestAddEdge(t *testing.T) {
 						Dest:   &nodeB,
 					},
 				},
-				Parents:         map[string]WeightedEdge{},
-				MinPathStrength: 1.0,
-				ShortestPathLen: 1.0,
+				Parents:       map[string]WeightedEdge{},
+				ShortestPath:  1.0,
+				ShortestPaths: []float64{1.0},
 			},
 		},
 

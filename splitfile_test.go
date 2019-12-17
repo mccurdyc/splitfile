@@ -15,12 +15,12 @@ import (
 
 var (
 	emptyNode = graph.Node{
-		ID:              "node",
-		Object:          nil,
-		Edges:           make(map[string]graph.WeightedEdge),
-		Parents:         make(map[string]graph.WeightedEdge),
-		MinPathStrength: 0.0,
-		ShortestPathLen: 0.0,
+		ID:            "node",
+		Object:        nil,
+		Edges:         make(map[string]graph.WeightedEdge),
+		Parents:       make(map[string]graph.WeightedEdge),
+		ShortestPath:  -1.0,
+		ShortestPaths: make([]float64, 0),
 	}
 )
 
