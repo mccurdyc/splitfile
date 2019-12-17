@@ -41,8 +41,7 @@ func Partition(g Graph, epsilon float64) []WeightedEdge {
 	return identifyPartitions(dists, epsilon)
 }
 
-// bfs does breadth-first search of the graph, keeping track
-// of shortest path and the mininimum path strength (i.e., the weakest edge in a path).
+// bfs does breadth-first search of the graph, keeping track of the current and past shortest paths.
 func bfs(level map[string]*Node) map[string]*Node {
 	next := make(map[string]*Node)
 
