@@ -1,7 +1,6 @@
 package graph
 
 import (
-	"container/list"
 	"log"
 )
 
@@ -30,53 +29,50 @@ func Partition(g Graph, epsilon float64) []WeightedEdge {
 		roots[r.ID] = r
 	}
 
-	visited := make(map[string]bool)
-	recursiveBFS(roots, visited)
+	var curr, next map[string]*Node
+	curr = roots
+
+	for len(next) > 0 {
+		next = bfs(curr)
+		curr = next
+	}
 
 	dists := calculateDistances(g, g.Edges())
 	return identifyPartitions(dists, epsilon)
 }
 
-// recursiveBFS does recursive breadth-first search of the graph, keeping track
+// bfs does breadth-first search of the graph, keeping track
 // of shortest path and the mininimum path strength (i.e., the weakest edge in a path).
-func recursiveBFS(level map[string]*Node, visited map[string]bool) {
-	evalQueue := list.New()
-	nextLevel := make(map[string]*Node)
+func bfs(level map[string]*Node) map[string]*Node {
+	next := make(map[string]*Node)
 
 	for _, node := range level {
-		if _, ok := visited[node.ID]; !ok {
-			evalQueue.PushBack(node)
-		}
-	}
+		for _, childEdge := range node.Edges {
+			p, changed := shortestPath(childEdge)
 
-	for evalQueue.Len() > 0 {
-		n, ok := evalQueue.Remove(evalQueue.Front()).(*Node)
-		if !ok {
-			continue
-		}
-
-		for _, childEdge := range n.Edges {
-			nextLevel[childEdge.Dest.ID] = childEdge.Dest
-
-			p := shortestPath(childEdge)
-			if p < childEdge.Dest.ShortestPath {
+			if changed {
 				childEdge.Dest.ShortestPath = p
+				childEdge.Dest.ShortestPaths = append(childEdge.Dest.ShortestPaths, p)
+				next[childEdge.Dest.ID] = childEdge.Dest
 			}
-
-			childEdge.Source.ShortestPaths = append(childEdge.Dest.ShortestPaths, p)
 		}
-
-		visited[n.ID] = true
-		recursiveBFS(nextLevel, visited)
 	}
+
+	return next
 }
 
-func shortestPath(edge WeightedEdge) float64 {
-	if edge.Source == nil || edge.Source.ShortestPath == defaultWeight {
-		return edge.Weight
+func shortestPath(edge WeightedEdge) (res float64, changed bool) {
+	res = edge.Weight
+
+	if edge.Source != nil && edge.Source.ShortestPath != defaultWeight {
+		res += edge.Source.ShortestPath
 	}
 
-	return edge.Source.ShortestPath + edge.Weight
+	if edge.Dest == nil || edge.Dest.ShortestPath == defaultWeight || res < edge.Dest.ShortestPath {
+		return res, true
+	}
+
+	return edge.Dest.ShortestPath, false
 }
 
 // calculateDistances calculates the strongest strong distance of an edge from
