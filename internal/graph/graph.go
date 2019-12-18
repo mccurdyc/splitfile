@@ -29,27 +29,30 @@ func (g Graph) ContainsNode(id string) bool {
 	return ok
 }
 
-// Partition returns a slice of nodes that should be split from a given source graph.
-//
-// TODO (Issue#8): actually add logic to properly partition
-func (g Graph) Partition() []*Node {
-	res := make([]*Node, 0, len(g))
+// Roots finds the many possible roots in the graph.
+// The order of the graph traversal matters because if a parent is added _after_
+// a child, then that child node won't have the identified parent node.
+func (g Graph) Roots() []*Node {
+	roots := make([]*Node, 0, len(g))
 
-	// TODO: for now, just return every node
-	for _, v := range g {
-		res = append(res, v)
+	for _, node := range g {
+		if len(node.Parents) == 0 {
+			roots = append(roots, node)
+		}
 	}
 
-	return res
+	return roots
 }
 
-func (g Graph) shouldPartition() bool {
-	if len(g) <= 1 {
-		return false
+// Edges returns all of the edges in the graph.
+func (g Graph) Edges() []WeightedEdge {
+	edges := make([]WeightedEdge, 0)
+
+	for _, node := range g {
+		for _, edge := range node.Edges {
+			edges = append(edges, edge)
+		}
 	}
 
-	// TODO: thought; maybe eventually we store meta data about the graph
-	// (e.g., types of edges such as method and if there are zero methods, maybe we consider not partitioning)
-
-	return true
+	return edges
 }

@@ -14,7 +14,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name:     "splitfile",
-	Doc:      "checks for clean splits of files in packages based on objects and their relationships with other objects.",
+	Doc:      "A static analysis that identifies partitions of declarations and their uses to improve the readability of Go packages.",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }
@@ -26,14 +26,17 @@ type Poser interface {
 func run(pass *analysis.Pass) (interface{}, error) {
 	g := traverse(pass.TypesInfo.Defs)
 
-	nodes := g.Partition() // TODO (Issue#8): right now, this returns every single node in the graph
-	for _, n := range nodes {
-		p, ok := n.Object.(Poser)
+	edges := graph.Partition(g, 0.1) // TODO: make this epsilon value configurable (or at least find a reasonable default i.e., the "natural" value)
+	for _, e := range edges {
+		src, ok := e.Source.Object.(Poser)
 		if !ok {
 			continue
 		}
 
-		pass.Reportf(p.Pos(), "parition found - %+v", n)
+		pass.Report(analysis.Diagnostic{
+			Pos:     src.Pos(),
+			Message: "potential partition identified",
+		})
 	}
 
 	return nil, nil
@@ -45,18 +48,19 @@ func traverse(defs map[*ast.Ident]types.Object) graph.Graph {
 	g := graph.New()
 
 	for _, def := range defs {
-
 		if skip := filter(def); skip {
 			continue
 		}
 
-		node := graph.NewNode(Id(def), def)
-		err := g.AddNode(node)
-		if err != nil {
-			continue
+		if !g.ContainsNode(Id(def)) {
+			node := graph.NewNode(Id(def), def)
+			err := g.AddNode(node)
+			if err != nil {
+				continue
+			}
 		}
 
-		err = addRelated(g, node)
+		err := addRelated(g, g[Id(def)])
 		if err != nil {
 			continue
 		}
@@ -71,7 +75,12 @@ func filter(def types.Object) bool {
 		return true
 	}
 
-	return false
+	switch def.(type) {
+	case *types.Func, *types.TypeName:
+		return false
+	}
+
+	return true
 }
 
 type Typer interface {
@@ -88,19 +97,31 @@ func addRelated(g graph.Graph, node *graph.Node) error {
 	if !ok {
 		return errors.New("node does not have a Type() method")
 	}
+
 	m := checkMethods(types.NewMethodSet(t.Type()))
 
-	for _, r := range m {
-		if r.ID == node.ID {
-			continue
+	// it is important to add receivers first
+	for _, v := range m {
+		if !g.ContainsNode(v.method.ID) {
+			err := g.AddNode(v.method)
+			if err != nil {
+				continue
+			}
 		}
 
-		err := g.AddNode(r)
-		if err != nil {
-			continue
-		}
+		// Lower weight is better. It indicates "closeness"
+		node.AddEdge(g[v.method.ID], 2.0) // TODO (Issue #15): read value from config or use default
 
-		node.AddEdge(r, 5.0) // TODO (Issue #15): read value from config or use default
+		for _, r := range v.other {
+			if !g.ContainsNode(r.ID) {
+				err := g.AddNode(r)
+				if err != nil {
+					continue
+				}
+			}
+
+			g[v.method.ID].AddEdge(g[r.ID], 5.0) // params, results, etc should be on the method node, not the receiver node
+		}
 	}
 
 	// TODO: check other places for related (e.g., funcs, interfaces, etc.)
@@ -108,54 +129,76 @@ func addRelated(g graph.Graph, node *graph.Node) error {
 	return nil
 }
 
+type methodSetResult map[string]methodResult
+type methodResult struct {
+	method    *graph.Node
+	receivers []*graph.Node
+	other     []*graph.Node
+}
+
 // checkMethods checks methods' signatures for related types.
-func checkMethods(mset *types.MethodSet) []*graph.Node {
-	rel := make([]*graph.Node, 0)
+func checkMethods(mset *types.MethodSet) methodSetResult {
+	res := make(methodSetResult)
 
 	for i := 0; i < mset.Len(); i++ {
 		method := mset.At(i)
 
-		m := graph.NewNode(Id(method.Obj()), method.Obj())
-		rel = append(rel, m) // methods themselves are always related
-
 		sig, ok := method.Type().(*types.Signature)
 		if !ok {
-			continue
+			continue // skip evaluating method bodies
 		}
 
-		related := checkSignature(sig)
-		rel = append(rel, related...)
+		m := graph.NewNode(Id(method.Obj()), method.Obj())
+		v := methodResult{
+			method:    m,
+			receivers: make([]*graph.Node, 0),
+			other:     make([]*graph.Node, 0),
+		}
+
+		sigRes := checkSignature(sig)
+		v.receivers = append(v.receivers, sigRes.receivers...)
+		v.other = append(v.other, sigRes.other...)
+
+		res[m.ID] = v
 	}
 
-	return rel
+	return res
 }
 
-// checkSignature checks a function signature, the receiver (if it is a method this
-// will be a non-nil value), the parameters and the return types.
-func checkSignature(sig *types.Signature) []*graph.Node {
-	rel := make([]*graph.Node, 0)
+// checkSignature checks a function signature. Specifically, the parameters and the return types.
+func checkSignature(sig *types.Signature) methodResult {
+	res := methodResult{
+		receivers: make([]*graph.Node, 0),
+		other:     make([]*graph.Node, 0),
+	}
 
 	if v := checkVar(sig.Recv()); v != nil {
-		rel = append(rel, v)
+		res.receivers = append(res.receivers, v)
 	}
-	rel = append(rel, checkTuple(sig.Params())...)
-	rel = append(rel, checkTuple(sig.Results())...)
+	res.other = append(res.other, checkTuple(sig.Params())...)
+	res.other = append(res.other, checkTuple(sig.Results())...)
 
-	return rel
+	return res
 }
 
-// checkVar validates a variable and if it is valid, it is returned as a valid related.
+// checkVar validates a variable and if it is valid, it is returned as a valid node.
 func checkVar(v *types.Var) *graph.Node {
 	if v == nil || v.Type() == types.Type(nil) {
 		return nil
 	}
 
-	return graph.NewNode(Id(v), v)
+	typ, ok := v.Type().(*types.Named)
+	if !ok {
+		return nil
+	}
+	obj := typ.Obj()
+
+	return graph.NewNode(Id(obj), obj)
 }
 
-// checkTuple checks a tuple of variables for related nodes.
+// checkTuple checks a tuple of variables for nodes.
 func checkTuple(vars *types.Tuple) []*graph.Node {
-	rel := make([]*graph.Node, 0)
+	res := make([]*graph.Node, 0)
 
 	for i := 0; i < vars.Len(); i++ {
 		v := checkVar(vars.At(i))
@@ -164,8 +207,8 @@ func checkTuple(vars *types.Tuple) []*graph.Node {
 			continue
 		}
 
-		rel = append(rel, v)
+		res = append(res, v)
 	}
 
-	return rel
+	return res
 }
