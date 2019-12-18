@@ -34,6 +34,11 @@ func Partition(g Graph, epsilon float64) []WeightedEdge {
 
 	for len(next) > 0 {
 		next = bfs(curr)
+
+		for id, n := range curr {
+			g[id] = n
+		}
+
 		curr = next
 	}
 
@@ -49,9 +54,10 @@ func bfs(level map[string]*Node) map[string]*Node {
 		for _, childEdge := range node.Edges {
 			p, changed := shortestPath(childEdge)
 
+			childEdge.Dest.ShortestPaths = append(childEdge.Dest.ShortestPaths, p)
+
 			if changed {
 				childEdge.Dest.ShortestPath = p
-				childEdge.Dest.ShortestPaths = append(childEdge.Dest.ShortestPaths, p)
 				next[childEdge.Dest.ID] = childEdge.Dest
 			}
 		}
@@ -96,7 +102,6 @@ func calculateDistances(g Graph, edges []WeightedEdge) []WeightedEdge {
 	res := make([]WeightedEdge, 0, len(edges))
 
 	for _, edge := range edges {
-
 		var sum float64
 		for _, sp := range edge.Dest.ShortestPaths {
 			sum += sp
